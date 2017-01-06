@@ -1,6 +1,6 @@
 # Dependencies
 
-The essential dependecies include `numpy`, `subprocess32`, `regex`, `tensorflow`:
+The essential dependencies include `numpy`, `subprocess32`, `regex`, `tensorflow`:
 
     $ pip install --user numpy subprocess32 regex tensorflow
 
@@ -11,9 +11,9 @@ In order to run the server, you must install `bottle` and `paste` as well as `cl
 
 # Training 
 
-In order to train, organize the input into bins for training and validation, with each bin containing
-a set of source files that compile. Then run the script `data_processing/generate_data.py` to generate
-training data. The data needed for training is stored in the `network_inputs` directory.
+To train, organize the input into bins for training and validation, with each bin containing a
+set of source files that compile. Then run the script `data_processing/generate_data.py` to generate
+training data. The data required for training the network is stored in the `network_inputs` directory.
 
 To train the network, use the script `neural_net/train.py`. This saves the model periodically in the
 directory `checkpoints`.
