@@ -1,3 +1,7 @@
+# License
+
+DeepFix is available under the Apache License, version 2.0. Please see the LICENSE file for details.
+
 # Dependencies
 
 The essential dependencies include `numpy`, `subprocess32`, `regex`, `tensorflow`:
