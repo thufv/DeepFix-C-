@@ -2,6 +2,10 @@
 
 DeepFix is available under the Apache License, version 2.0. Please see the LICENSE file for details.
 
+# Reference
+
+Rahul Gupta, Soham Pal, Aditya Kanade, Shirish Shevade. "DeepFix: Fixing common C language errors by deep learning", AAAI 2017.
+
 # Dependencies
 
 The essential dependencies include `numpy`, `subprocess32`, `regex`, `tensorflow`:
