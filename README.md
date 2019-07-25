@@ -1,7 +1,7 @@
 # Updates (December 13, 2017)
 
-1. We are glad to announce that the [DeepFix dataset](https://www.cse.iitk.ac.in/users/karkare/prutor/prutor-deepfix-09-12-2017.db.gz) has been released, courtesy Prof. Amey Karkare and his research group.
-This dataset was collected from an introductory programming course at Indian Institute of Technology, Kanpur, India using a programming tutoring system called [Prutor](https://www.cse.iitk.ac.in/users/karkare/prutor/).
+1. We are glad to announce that the [DeepFix dataset](https://www.cse.iitk.ac.in/users/karkare/prutor/prutor-deepfix-09-12-2017.zip) has been released under Apache 2.0, courtesy Prof. Amey Karkare and his research group.
+It was collected from an introductory programming course at Indian Institute of Technology, Kanpur, India using a programming tutoring system called [Prutor](https://www.cse.iitk.ac.in/users/karkare/prutor/).
 If you use this dataset for your research, kindly give due [credits](https://www.cse.iitk.ac.in/users/karkare/prutor/deepfix-bib.html) to both Prutor and DeepFix. 
 
 2. We have updated the training data generation process to remove any bias towards particular error seeding rules. This has resulted in improved performance for DeepFix. We have also upgraded the code to use dynamic RNN implementation of tensorflow and made it easier to set up the environment and to reproduce the results.
@@ -43,7 +43,7 @@ Rahul Gupta, Soham Pal, Aditya Kanade, Shirish Shevade. "DeepFix: Fixing common 
 
 # Running the tool
 
-If you are using Ubuntu 16.04.3 LTS (not tested on other distributions) and have conda installed, you can simply source `init.sh` which creates a new virtual environment called `deepfix` and installs all the dependcies in it.
+If you are using Ubuntu 16.04.3 LTS (not tested on other distributions) and have conda installed, you can simply source `init.sh` which creates a new virtual environment called `deepfix` and installs all the dependencies in it.
 Furthermore, it downloads, extracts, and preprocesses the student submission data for you into the required directory structure.
 
 To reproduce the results, first you need to generate training, validation, and testing data from the preprocessed dataset.
