@@ -206,7 +206,7 @@ if __name__ == "__main__":
     seed = 1189
 
     db_path = os.path.join('data', 'iitk-dataset', 'dataset.db')
-    bins = np.load(os.path.join('data', 'iitk-dataset', 'bins.npy'))
+    bins = np.load(os.path.join('data', 'iitk-dataset', 'bins.npy'), allow_pickle=True)
 
     kind_mutations = 'typo'
     iitk_typo_output_directory = os.path.join('data/network_inputs', 'iitk-%s-%d' % (kind_mutations, seed))

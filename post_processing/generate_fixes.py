@@ -90,7 +90,7 @@ print 'using database:', database
 
 if not args.data_directory:
     training_args = np.load(os.path.join(
-        args.checkpoint_directory, 'experiment-configuration.npy')).item()['args']
+        args.checkpoint_directory, 'experiment-configuration.npy'), allow_pickle=True).item()['args']
     args.data_directory = training_args.data_directory
 
 print 'data directory:', args.data_directory
@@ -197,10 +197,10 @@ else:
 
 if args.which == 'raw':
     test_dataset = np.load(os.path.join(
-        args.data_directory, 'test_%s_bin_%d.npy' % (args.which, bin_id))).item()
+        args.data_directory, 'test_%s_bin_%d.npy' % (args.which, bin_id)), allow_pickle=True).item()
 else:
     test_dataset = np.load(os.path.join(
-        args.data_directory, 'test_%s-%s_bin_%d.npy' % (args.which, args.task, bin_id))).item()
+        args.data_directory, 'test_%s-%s_bin_%d.npy' % (args.which, args.task, bin_id)), allow_pickle=True).item()
 
 # Attempt to repair
 sequences_of_programs = {}

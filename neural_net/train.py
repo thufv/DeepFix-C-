@@ -33,10 +33,10 @@ from data_processing.training_data_generator import load_dictionaries
 
 class load_data:
     def _deserialize(self, data_folder):
-        train_ex = np.load(os.path.join(data_folder, 'examples-train.npy'))
+        train_ex = np.load(os.path.join(data_folder, 'examples-train.npy'), allow_pickle=True)
         valid_ex = np.load(os.path.join(
-            data_folder, 'examples-validation.npy'))
-        test_ex = np.load(os.path.join(data_folder, 'examples-test.npy'))
+            data_folder, 'examples-validation.npy'), allow_pickle=True)
+        test_ex = np.load(os.path.join(data_folder, 'examples-test.npy'), allow_pickle=True)
         assert train_ex is not None and valid_ex is not None and test_ex is not None
         return train_ex, valid_ex, test_ex
 

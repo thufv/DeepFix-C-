@@ -275,7 +275,7 @@ def save_dictionaries(destination, tl_dict):
 
 
 def load_dictionaries(destination):
-    tl_dict, rev_tl_dict = np.load(os.path.join(destination, 'all_dicts.npy'))
+    tl_dict, rev_tl_dict = np.load(os.path.join(destination, 'all_dicts.npy'), allow_pickle=True)
     return tl_dict, rev_tl_dict
 
 
@@ -337,8 +337,8 @@ if __name__ == '__main__':
     max_variants = 4 if kind_mutations == 'ids' else 2
 
     db_path = os.path.join('data', 'iitk-dataset', 'dataset.db')
-    validation_users = np.load(os.path.join('data', 'iitk-dataset', 'validation_users.npy')).item()
-    bins = np.load(os.path.join('data', 'iitk-dataset', 'bins.npy'))
+    validation_users = np.load(os.path.join('data', 'iitk-dataset', 'validation_users.npy'), allow_pickle=True).item()
+    bins = np.load(os.path.join('data', 'iitk-dataset', 'bins.npy'), allow_pickle=True)
 
     seed = 1189
 
@@ -354,7 +354,7 @@ if __name__ == '__main__':
     np.save(os.path.join(output_directory, 'tokenized-examples.npy'), token_strings)
     np.save(os.path.join(output_directory, 'error-seeding-distribution.npy'), mutations_distribution)
 
-    # token_strings = np.load(os.path.join(output_directory, 'tokenized-examples.npy')).item()
+    # token_strings = np.load(os.path.join(output_directory, 'tokenized-examples.npy'), allow_pickle=True).item()
 
     tl_dict = build_dictionary(token_strings, drop_ids)
 
