@@ -638,6 +638,7 @@ if __name__ == '__main__':
         start_time = time.time()
         train_loss = []
 
+        total_steps = num_train / args.batch_size - resume_minibatch
         for i in range(resume_minibatch, num_train / args.batch_size):
             start = i * args.batch_size
             end = (i + 1) * args.batch_size
@@ -649,7 +650,7 @@ if __name__ == '__main__':
 
             # Print progress
             step += 1
-            print "Step: {},\tMinibatch: {},\tEpoch: {},\tLoss: {}".format(step, i, t + float(i + 1) / (num_train / args.batch_size), train_loss[-1])
+            print "Step: {}/{},\tMinibatch: {},\tEpoch: {},\tLoss: {}".format(step, total_steps, i, t + float(i + 1) / (num_train / args.batch_size), train_loss[-1])
 
             # Checkpoint
             if step % args.ckpt_every == 0:
