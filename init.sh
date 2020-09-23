@@ -11,9 +11,8 @@ mkdir logs
 mkdir data/results
 
 echo
-echo 'Downloading DeepFix dataset...'
-wget https://www.cse.iitk.ac.in/users/karkare/prutor/prutor-deepfix-09-12-2017.zip -P data/
 cd data
+echo 'Extracting DeepFix dataset...'
 unzip prutor-deepfix-09-12-2017.zip
 mv prutor-deepfix-09-12-2017/* iitk-dataset/
 rm -rf prutor-deepfix-09-12-2017 prutor-deepfix-09-12-2017.zip
