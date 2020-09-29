@@ -1,4 +1,30 @@
-# Updates (December 13, 2017)
+# Setup
+
+Make sure the following commands are installed on a machine with nvidia GPU supporting cuda 8:
+
+- `conda`
+- `unzip`
+- `gunzip`
+
+Then, running `./init.sh` to setup python environment and preprocess deepfix dataset.
+
+# Usage
+
+First of all, launch the python environment:
+
+```
+source activate deepfix
+```
+
+To run a one-fold training:
+
+```
+./1fold-end-to-end.sh
+```
+
+Note: this script has three steps and "Step 1 >> Data generation" can be skipped if you are training the network a second time.
+
+<!-- # Updates (December 13, 2017)
 
 1. We are glad to announce that the [DeepFix dataset](https://www.cse.iitk.ac.in/users/karkare/prutor/prutor-deepfix-09-12-2017.zip) has been released under Apache 2.0, courtesy Prof. Amey Karkare and his research group.
 It was collected from an introductory programming course at Indian Institute of Technology, Kanpur, India using a programming tutoring system called [Prutor](https://www.cse.iitk.ac.in/users/karkare/prutor/).
@@ -60,4 +86,4 @@ If you want to check the programs after fix, check the `.db` files which are sql
 # TL;DR
 
     $ source init.sh
-    $ bash end-to-end.sh
+    $ bash end-to-end.sh -->
