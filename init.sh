@@ -1,6 +1,6 @@
 set -e
 
-# source ".../conda.sh"
+# source /opt/anaconda3/etc/profile.d/conda.sh
 
 echo
 echo 'Setting up a new virtual environment...'
@@ -8,7 +8,7 @@ echo
 echo y | conda create -n deepfix python=2.7
 echo 'done!'
 conda activate deepfix
-conda install subprocess32 tensorflow-gpu==1.0.1 regex
+echo y | conda install subprocess32 tensorflow-gpu==1.0.1 regex
 
 mkdir temp
 mkdir logs
