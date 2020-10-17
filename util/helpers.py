@@ -116,13 +116,16 @@ def compilation_errors(string):
 # Input: tokenized program
 # Returns: array of lines, each line is tokenized
 def get_lines(program_string):
-    tokens = program_string.split()
-    ignore_tokens = ['~'] + [chr(n + ord('0')) for n in range(10)]
+    # tokens = program_string.split()
+    # ignore_tokens = ['~'] + [chr(n + ord('0')) for n in range(10)]
+    ignore_tokens = [str(n) for n in range(10)]
 
     lines = []
 
-    for token in tokens:
-        if token in ignore_tokens and token == '~':
+    # for token in tokens:
+    for token in program_string.split():
+        # if token in ignore_tokens and token == '~':
+        if token == '~':
             if len(lines) > 0:
                 lines[-1] = lines[-1].rstrip(' ')
             lines.append('')
@@ -144,6 +147,7 @@ def recompose_program(lines):
         recomposed_program += '~ '
         recomposed_program += line + ' '
 
+    # Should return recomposed_program.rstrip()???
     return recomposed_program
 
 

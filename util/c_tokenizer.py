@@ -83,6 +83,7 @@ class C_Tokenizer(Tokenizer):
         lines = get_lines(tokens_string)
 
         if len(lines) == 1:
+            # Should be lines == ['']???
             raise EmptyProgramException(tokens_string)
 
         for i in range(len(lines) - 1, -1, -1):
@@ -107,6 +108,7 @@ class C_Tokenizer(Tokenizer):
 
         for line in lines:
             assert(lines[i].strip() != '')
+            # Should be line instead of lines[i]???
 
         return recompose_program(lines)
 
@@ -134,8 +136,10 @@ class C_Tokenizer(Tokenizer):
             if isinstance(token, Exception):
                 return '', '', ''
 
-            type_ = str(token[0])
-            value = str(token[1])
+            # type_ = str(token[0])
+            type_ = token[0]
+            # value = str(token[1])
+            value = token[1]
 
             if value in self._keywords:
                 result += '_<keyword>_' + self._escape(value) + ' '
