@@ -39,7 +39,7 @@ class C_Tokenizer(Tokenizer):
         return repr(string)[1:-1]
 
     def _tokenize_code(self, code):
-        keywords = {'IF', 'THEN', 'ENDIF', 'FOR', 'NEXT', 'GOSUB', 'RETURN'}
+        # keywords = {'IF', 'THEN', 'ENDIF', 'FOR', 'NEXT', 'GOSUB', 'RETURN'}
         token_specification = [
             ('comment',
              r'\/\*(?:[^*]|\*(?!\/))*\*\/|\/\*([^*]|\*(?!\/))*\*?|\/\/[^\n]*'),
@@ -58,23 +58,26 @@ class C_Tokenizer(Tokenizer):
         ]
         tok_regex = '|'.join('(?P<%s>%s)' %
                              pair for pair in token_specification)
-        line_num = 1
-        line_start = 0
+        # line_num = 1
+        # line_start = 0
         for mo in re.finditer(tok_regex, code):
             kind = mo.lastgroup
             value = mo.group(kind)
-            if kind == 'NEWLINE':
-                line_start = mo.end()
-                line_num += 1
-            elif kind == 'SKIP':
-                pass
-            elif kind == 'MISMATCH':
-                yield UnexpectedTokenException('%r unexpected on line %d' % (value, line_num))
+            # if kind == 'NEWLINE':
+            #     line_start = mo.end()
+            #     line_num += 1
+            # elif kind == 'SKIP':
+            #     pass
+            # elif kind == 'MISMATCH':
+            if kind == 'MISMATCH':
+                # yield UnexpectedTokenException('%r unexpected on line %d' % (value, line_num))
+                yield UnexpectedTokenException('%r unexpected on line %d' % (value, 1))
             else:
-                if kind == 'ID' and value in keywords:
-                    kind = value
-                column = mo.start() - line_start
-                yield Token(kind, value, line_num, column)
+                # if kind == 'ID' and value in keywords:
+                #     kind = value
+                # column = mo.start() - line_start
+                # yield Token(kind, value, line_num, column)
+                yield Token(kind, value, 1, mo.start())
 
     def _sanitize_brackets(self, tokens_string):
         lines = get_lines(tokens_string)
@@ -111,12 +114,12 @@ class C_Tokenizer(Tokenizer):
                  keep_literals=False):
         result = '0 ~ '
 
-        names = ''
+        # names = ''
         line_count = 1
         name_dict = {}
         name_sequence = []
 
-        regex = '%(d|i|f|c|s|u|g|G|e|p|llu|ll|ld|l|o|x|X)'
+        # regex = '%(d|i|f|c|s|u|g|G|e|p|llu|ll|ld|l|o|x|X)'
         isNewLine = True
 
         # Get the iterable
@@ -163,7 +166,8 @@ class C_Tokenizer(Tokenizer):
 
             elif 'string' in type_:
                 matchObj = [m.group().strip()
-                            for m in re.finditer(regex, value)]
+                            # for m in re.finditer(regex, value)]
+                            for m in re.finditer('%(d|i|f|c|s|u|g|G|e|p|llu|ll|ld|l|o|x|X)', value)]
                 if matchObj and keep_format_specifiers:
                     for each in matchObj:
                         result += each + ' '
@@ -179,7 +183,7 @@ class C_Tokenizer(Tokenizer):
 
                     name_sequence.append(self._escape(value))
                     result += '_<id>_' + name_dict[self._escape(value)] + '@ '
-                    names += '_<id>_' + name_dict[self._escape(value)] + '@ '
+                    # names += '_<id>_' + name_dict[self._escape(value)] + '@ '
                 else:
                     result += '_<id>_' + '@ '
                 isNewLine = False
@@ -202,7 +206,7 @@ class C_Tokenizer(Tokenizer):
                 isNewLine = False
 
         result = result[:-1]
-        names = names[:-1]
+        # names = names[:-1]
 
         if result.endswith('~'):
             idx = result.rfind('}')
