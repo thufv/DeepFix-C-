@@ -15,10 +15,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from util.tokenizer import EmptyProgramException
 from util.helpers import get_rev_dict, make_dir_if_not_exists
 import os
-import time
 import argparse
 import sqlite3
 import numpy as np
@@ -78,7 +76,7 @@ def generate_training_data(db_path, bins, validation_users, min_program_length, 
         mutator_obj = Typo_Mutate(rng)
         mutate = partial(typo_mutate, mutator_obj)
 
-        def rename_ids(x, y): return (x, y)
+        def rename_ids(x, y): return x, y
     else:
         from data_processing.undeclared_mutator import LoopCountThresholdExceededException, FailedToMutateException, id_mutate
         mutate = partial(id_mutate, rng)
@@ -107,63 +105,40 @@ def generate_training_data(db_path, bins, validation_users, min_program_length, 
                 program_length = len(tokenized_code.split())
                 program_lengths.append(program_length)
 
-                if program_length >= min_program_length and program_length <= max_program_length:
-                    id_renamed_correct_program, _ = rename_ids(
-                        tokenized_code, '')
+                if min_program_length <= program_length <= max_program_length:
+                    id_renamed_correct_program, _ = rename_ids(tokenized_code, '')
 
                     # Correct pairs
-                    dummy_fix_for_correct_program = '-1'
                     try:
-                        token_strings[key][problem_id] += [
-                            (id_renamed_correct_program, dummy_fix_for_correct_program)]
+                        token_strings[key][problem_id] += [(id_renamed_correct_program, '-1')]
                     except:
-                        token_strings[key][problem_id] = [
-                            (id_renamed_correct_program, dummy_fix_for_correct_program)]
+                        token_strings[key][problem_id] = [(id_renamed_correct_program, '-1')]
 
                     # Mutate
                     total_mutate_calls += 1
                     try:
-                        iterator = mutate(
-                            tokenized_code, max_mutations, max_variants)
-
-                    except FailedToMutateException:
+                        iterator = mutate(tokenized_code, max_mutations, max_variants)
+                    except (FailedToMutateException, LoopCountThresholdExceededException):
                         exceptions_in_mutate_call += 1
-                    except LoopCountThresholdExceededException:
-                        exceptions_in_mutate_call += 1
-                    except ValueError:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
-                    except AssertionError:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
                     except Exception:
                         exceptions_in_mutate_call += 1
                         if kind_mutations == 'typo':
                             raise
                     else:
                         for corrupt_program, fix in iterator:
-                            corrupt_program_length = len(
-                                corrupt_program.split())
+                            corrupt_program_length = len(corrupt_program.split())
                             fix_length = len(fix.split())
                             fix_lengths.append(fix_length)
-
-                            if corrupt_program_length >= min_program_length and \
-                               corrupt_program_length <= max_program_length and fix_length <= max_fix_length:
-
+                            if (min_program_length <= corrupt_program_length <= max_program_length
+                                    and fix_length <= max_fix_length):
                                 try:
-                                    corrupt_program, fix = rename_ids(
-                                        corrupt_program, fix)
+                                    corrupt_program, fix = rename_ids(corrupt_program, fix)
                                 except FixIDNotFoundInSource:
                                     exceptions_in_mutate_call += 1
-
                                 try:
-                                    token_strings[key][problem_id] += [
-                                        (corrupt_program, fix)]
+                                    token_strings[key][problem_id] += [(corrupt_program, fix)]
                                 except:
-                                    token_strings[key][problem_id] = [
-                                        (corrupt_program, fix)]
+                                    token_strings[key][problem_id] = [(corrupt_program, fix)]
 
     program_lengths = np.sort(program_lengths)
     fix_lengths = np.sort(fix_lengths)

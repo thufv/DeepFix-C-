@@ -214,7 +214,6 @@ def typo_mutate(mutator_obj, prog, max_num_mutations, num_mutated_progs, just_on
             if loop_counter == loop_count_threshold:
                 print "mutation_count", mutation_count
                 raise LoopCountThresholdExceededException
-            line = None
 
             this_corrupted, line, mutation_name = mutator_obj.easy_mutate(
                 this_corrupted)     # line is line_number here!

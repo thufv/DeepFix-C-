@@ -101,44 +101,29 @@ def generate_seeded_test_data(db_path, bins, min_program_length, max_program_len
         for problem_id in problem_list:
             for row in cursor.execute(query, (problem_id, min_program_length, max_program_length)):
                 user_id, code_id, tokenized_code = map(str, row[:-2])
-                name_dict, name_sequence = json.loads(
-                    row[3]), json.loads(row[4])
+                name_dict, name_sequence = json.loads(row[3]), json.loads(row[4])
 
                 program_length = len(tokenized_code.split())
                 program_lengths.append(program_length)
-                if program_length >= min_program_length and program_length <= max_program_length:
+                if min_program_length <= program_length <= max_program_length:
                     # Mutate
                     total_mutate_calls += 1
                     try:
                         iterator = mutate(
                             tokenized_code, max_mutations, num_mutated_progs=1)
-
-                    except FailedToMutateException:
+                    except (FailedToMutateException, LoopCountThresholdExceededException):
                         exceptions_in_mutate_call += 1
-                    except LoopCountThresholdExceededException:
-                        exceptions_in_mutate_call += 1
-                    except ValueError:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
-                    except AssertionError:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
                     except Exception:
                         exceptions_in_mutate_call += 1
                         if kind_mutations == 'typo':
                             raise
                     else:
                         for corrupt_program, fix in iterator:
-                            corrupt_program_length = len(
-                                corrupt_program.split())
+                            corrupt_program_length = len(corrupt_program.split())
                             fix_length = len(fix.split())
                             fix_lengths.append(fix_length)
-
-                            if corrupt_program_length >= min_program_length and \
-                               corrupt_program_length <= max_program_length and fix_length <= max_fix_length:
-
+                            if (min_program_length <= corrupt_program_length <= max_program_length
+                                    and fix_length <= max_fix_length):
                                 try:
                                     result[problem_id].append(
                                         (corrupt_program, name_dict, name_sequence, user_id, code_id))
