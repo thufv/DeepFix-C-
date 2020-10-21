@@ -116,22 +116,15 @@ def compilation_errors(string):
 # Input: tokenized program
 # Returns: array of lines, each line is tokenized
 def get_lines(program_string):
-    # tokens = program_string.split()
-    # ignore_tokens = ['~'] + [chr(n + ord('0')) for n in range(10)]
-    ignore_tokens = [str(n) for n in range(10)]
-
     lines = []
-
-    # for token in tokens:
+    ignore_tokens = [str(n) for n in range(10)]
     for token in program_string.split():
-        # if token in ignore_tokens and token == '~':
         if token == '~':
             if len(lines) > 0:
                 lines[-1] = lines[-1].rstrip(' ')
             lines.append('')
         elif token not in ignore_tokens:
             lines[-1] += token + ' '
-
     return lines
 
 
@@ -632,22 +625,6 @@ def get_best_checkpoint(checkpoint_directory):
     if bc is None:
         raise ValueError('No checkpoints found!')
     return bc
-
-
-def make_equal_size_vectors(y, y_hat):
-
-    assert len(np.shape(y)) == 1 and len(np.shape(y_hat)) == 1
-
-    len_y = np.shape(y)[0]
-    len_y_hat = np.shape(y_hat)[0]
-
-    if len_y < len_y_hat:
-        y = np.concatenate((y, np.zeros(len_y_hat - len_y, y_hat.dtype)))
-    elif len_y_hat < len_y:
-        y_hat = np.concatenate(
-            (y_hat, np.zeros(len_y - len_y_hat, y_hat.dtype)))
-
-    return y, y_hat
 
 
 def make_equal_size_matrices(y, y_hat):

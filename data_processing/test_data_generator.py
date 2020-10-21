@@ -35,8 +35,8 @@ def generate_raw_test_data(db_path, bins, min_program_length, max_program_length
     skipped = 0
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
-        query = "SELECT user_id, code_id, tokenized_code, name_dict, name_seq FROM Code " +\
-            "WHERE problem_id=? and codelength>? and codelength<? and errorcount>0;"
+        query = 'SELECT user_id, code_id, tokenized_code, name_dict, name_seq FROM Code ' \
+                'WHERE problem_id=? and codelength>? and codelength<? and errorcount>0;'
         for problem_id in problem_list:
             for row in cursor.execute(query, (problem_id, min_program_length, max_program_length)):
                 user_id, code_id, tokenized_code = map(str, row[:-2])
@@ -96,40 +96,37 @@ def generate_seeded_test_data(db_path, bins, min_program_length, max_program_len
 
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
-        query = "SELECT user_id, code_id, tokenized_code, name_dict, name_seq FROM Code " +\
+        query = "SELECT user_id, code_id, tokenized_code, codelength, name_dict, name_seq FROM Code " +\
             "WHERE problem_id=? and codelength>? and codelength<? and errorcount=0;"
         for problem_id in problem_list:
             for row in cursor.execute(query, (problem_id, min_program_length, max_program_length)):
-                user_id, code_id, tokenized_code = map(str, row[:-2])
-                name_dict, name_sequence = json.loads(row[3]), json.loads(row[4])
+                user_id, code_id, tokenized_code, program_length = map(str, row[:-2])
+                name_dict, name_sequence = json.loads(row[4]), json.loads(row[5])
 
-                program_length = len(tokenized_code.split())
                 program_lengths.append(program_length)
-                if min_program_length <= program_length <= max_program_length:
-                    # Mutate
-                    total_mutate_calls += 1
-                    try:
-                        iterator = mutate(
-                            tokenized_code, max_mutations, num_mutated_progs=1)
-                    except (FailedToMutateException, LoopCountThresholdExceededException):
-                        exceptions_in_mutate_call += 1
-                    except Exception:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
-                    else:
-                        for corrupt_program, fix in iterator:
-                            corrupt_program_length = len(corrupt_program.split())
-                            fix_length = len(fix.split())
-                            fix_lengths.append(fix_length)
-                            if (min_program_length <= corrupt_program_length <= max_program_length
-                                    and fix_length <= max_fix_length):
-                                try:
-                                    result[problem_id].append(
-                                        (corrupt_program, name_dict, name_sequence, user_id, code_id))
-                                except KeyError:
-                                    result[problem_id] = [
-                                        (corrupt_program, name_dict, name_sequence, user_id, code_id)]
+                # Mutate
+                total_mutate_calls += 1
+                try:
+                    iterator = mutate(tokenized_code, max_mutations, num_mutated_progs=1)
+                except (FailedToMutateException, LoopCountThresholdExceededException):
+                    exceptions_in_mutate_call += 1
+                except Exception:
+                    exceptions_in_mutate_call += 1
+                    if kind_mutations == 'typo':
+                        raise
+                else:
+                    for corrupt_program, fix in iterator:
+                        corrupt_program_length = len(corrupt_program.split())
+                        fix_length = len(fix.split())
+                        fix_lengths.append(fix_length)
+                        if (min_program_length <= corrupt_program_length <= max_program_length
+                                and fix_length <= max_fix_length):
+                            try:
+                                result[problem_id].append(
+                                    (corrupt_program, name_dict, name_sequence, user_id, code_id))
+                            except KeyError:
+                                result[problem_id] = [
+                                    (corrupt_program, name_dict, name_sequence, user_id, code_id)]
 
                 if problem_id in result and len(result[problem_id]) >= programs_per_problem:
                     break
