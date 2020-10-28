@@ -217,8 +217,7 @@ def vectorize_data(token_strings, tl_dict, max_program_length, max_fix_length, d
                     fix_tokens, tl_dict,  max_fix_length, drop_ids, reverse=False, vecFor='decoder')
 
                 if (prog_vector is not None) and (fix_vector is not None):
-                    token_vectors[key][problem_id].append(
-                        (prog_vector, fix_vector))
+                    token_vectors[key][problem_id].append((prog_vector, fix_vector))
                 else:
                     skipped += 1
 
