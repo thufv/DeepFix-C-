@@ -24,11 +24,19 @@ Token = collections.namedtuple('Token', ['typ', 'value', 'line', 'column'])
 
 
 class CS_Tokenizer(Tokenizer):
-    _keywords = ['auto', 'break', 'case', 'const', 'continue', 'default',
-                 'do', 'else', 'enum', 'extern', 'for', 'goto', 'if',
-                 'register', 'return', 'signed', 'sizeof', 'static', 'switch',
-                 'typedef', 'void', 'volatile', 'while', 'EOF', 'NULL',
-                 'null', 'struct', 'union']
+    _keywords = ['abstract', 'as', 'base', 'bool', 'break', 'byte', 'case',
+                 'catch', 'char', 'checked', 'class', 'const', 'continue',
+                 'decimal', 'default', 'delegate', 'do', 'double', 'else',
+                 'enum', 'event', 'explicit', 'extern', 'false', 'finally',
+                 'fixed', 'float', 'for', 'foreach', 'goto', 'if', 'implicit',
+                 'in', 'int', 'interface', 'internal', 'is', 'lock', 'long',
+                 'namespace', 'new', 'null', 'object', 'operator', 'out',
+                 'override', 'params', 'private', 'protected', 'public',
+                 'readonly', 'ref', 'return', 'sbyte', 'sealed', 'short',
+                 'sizeof', 'stackalloc', 'static', 'string', 'struct',
+                 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'uint',
+                 'ulong', 'unchecked', 'unsafe', 'ushort', 'using', 'virtual',
+                 'void', 'volatile', 'while']
     # _calls = ['printf', 'scanf', 'cin', 'cout', 'clrscr', 'getch', 'strlen',
     #           'gets', 'fgets', 'getchar', 'main', 'malloc', 'calloc', 'free']
     # _types = ['char', 'double', 'float', 'int', 'long', 'short', 'unsigned']
@@ -41,13 +49,13 @@ class CS_Tokenizer(Tokenizer):
             ('comment',
              r'\/\*(?:[^*]|\*(?!\/))*\*\/|\/\*([^*]|\*(?!\/))*\*?|\/\/[^\n]*'),
             # ('directive', r'#\w+'),
-            ('string', r'"(?:[^"\n]|\\")*"?'),
+            ('string', r'[$@]?"(?:[^"\n]|\\")*"?'),
             ('char', r"'(?:\\?[^'\n]|\\')'"),
             ('char_continue', r"'[^']*"),
             ('number',  r'[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?'),
             # ('include',  r'(?<=\#include) *<([_A-Za-z]\w*(?:\.h))?>'),
             ('op',
-             r'\(|\)|\[|\]|{|}|->|<<|>>|\*\*|\|\||&&|--|\+\+|[-+*|&%\/=]=|[-<>~!%^&*\/+=?|.,:;#]'),
+             r'\(|\)|\[|\]|{|}|->|=>|<<|>>|\*\*|\|\||&&|--|\+\+|[-+*|&%\/=]=|[-<>~!%^&*\/+=?|.,:;#]'),
             ('name',  r'[_A-Za-z]\w*'),
             ('whitespace',  r'\s+'),
             ('nl', r'\\\n?'),
