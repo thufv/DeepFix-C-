@@ -29,8 +29,6 @@ class C_Tokenizer(Tokenizer):
                  'register', 'return', 'signed', 'sizeof', 'static', 'switch',
                  'typedef', 'void', 'volatile', 'while', 'EOF', 'NULL',
                  'null', 'struct', 'union']
-    _includes = ['stdio.h', 'stdlib.h', 'string.h', 'math.h', 'malloc.h',
-                 'stdbool.h', 'cstdio', 'cstdio.h', 'iostream', 'conio.h']
     _calls = ['printf', 'scanf', 'cin', 'cout', 'clrscr', 'getch', 'strlen',
               'gets', 'fgets', 'getchar', 'main', 'malloc', 'calloc', 'free']
     _types = ['char', 'double', 'float', 'int', 'long', 'short', 'unsigned']

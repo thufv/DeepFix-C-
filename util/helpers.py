@@ -35,57 +35,6 @@ class SubstitutionFailedException(Exception):
     pass
 
 
-def split_list(a_list, delimiter, keep_delimiter=True):
-    output = []
-    temp = []
-    for each in a_list:
-        if each == delimiter:
-            if keep_delimiter:
-                temp.append(delimiter)
-            output.append(temp)
-            temp = []
-        else:
-            temp.append(each)
-    output.append(temp)
-    return output
-
-
-def join_list(a_list):
-    output = []
-    for each in a_list:
-        output += each
-    return output
-
-
-def fix_imports(program):
-    imports = '#include <stdio.h>\n#include <stdlib.h>\n'
-
-    if '#include' not in program:
-        program = imports + program
-
-    elif 'stdlib' not in program and 'stdio' in program:
-        if '#include <stdio.h>' in program:
-            program = program.replace('#include <stdio.h>', imports)
-        elif '#include<stdio.h>' in program:
-            program = program.replace('#include<stdio.h>', imports)
-        elif '#include "stdio.h"' in program:
-            program = program.replace('#include "stdio.h"', imports)
-        else:
-            print 'could not find stdio string!'
-
-    elif 'stdio' not in program and 'stdlib' in program:
-        if '#include <stdlib.h>' in program:
-            program = program.replace('#include <stdlib.h>', imports)
-        elif '#include<stdlib.h>' in program:
-            program = program.replace('#include<stdlib.h>', imports)
-        elif '#include "stdlib.h"' in program:
-            program = program.replace('#include "stdlib.h"', imports)
-        else:
-            print 'could not find stdlib string!'
-
-    return program
-
-
 def compilation_errors(string):
     name1 = int(time.time() * 10**6)
     name2 = np.random.random_integers(0, 1000)
@@ -259,13 +208,6 @@ def extract_line_number(line):
     raise FailedToGetLineNumberException(line)
 
 
-def done(msg=''):
-    if msg == '':
-        print 'done at', time.strftime("%d/%m/%Y"), time.strftime("%H:%M:%S")
-    else:
-        print msg, ',done at', time.strftime("%d/%m/%Y"), time.strftime("%H:%M:%S")
-
-
 # Checks if all of the ids in the fix are present in the original program
 # fix_string is the token string of the fix
 # program_string is the token string of the program
@@ -286,15 +228,6 @@ def fix_ids_are_in_program(program_string, fix_string):
             return False
 
     return True
-
-
-def reverse_name_dictionary(dictionary):
-    rev = {}
-
-    for x, y in dictionary.iteritems():
-        rev['_<id>_' + y + '@'] = x
-
-    return rev
 
 
 def replace_ids(new_line, old_line):
@@ -496,135 +429,6 @@ def vstack_with_right_padding(arraylist):
     output = np.vstack(new_arraylist)
     assert (row_total, col_max) == np.shape(output)
     return output
-
-
-def fix_to_source(fix, tokens, name_dict, name_seq=None, literal_seq=None, clang_format=False):
-    result = ''
-    type_ = None
-
-    reverse_name_dict = {}
-    name_count = 0
-
-    for k, v in name_dict.iteritems():
-        reverse_name_dict[v] = k
-
-    line_number = extract_line_number(fix)
-
-    tokens = recompose_program(get_lines(tokens)[:line_number])
-
-    for token in tokens.split():
-        try:
-            type_, content = token.split('>_')
-            type_ = type_.lstrip('_<')
-
-            if type_ == 'id':
-                if name_seq is not None:
-                    name_count += 1
-
-            if type_ == 'number':
-                if literal_seq is not None:
-                    literal_seq = literal_seq[1:]
-
-            elif type_ == 'string':
-                if literal_seq is not None:
-                    literal_seq = literal_seq[1:]
-
-            elif type_ == 'char':
-                if literal_seq is not None:
-                    literal_seq = literal_seq[1:]
-
-        except ValueError:
-            if token == '~':
-                pass
-
-    for token in fix.split():
-        try:
-            prev_type_was_op = (type_ == 'op')
-
-            type_, content = token.split('>_')
-            type_ = type_.lstrip('_<')
-
-            if type_ == 'id':
-                if name_seq is not None:
-                    content = name_seq[name_count]
-                    name_count += 1
-                else:
-                    try:
-                        content = reverse_name_dict[content.rstrip('@')]
-                    except KeyError:
-                        content = 'new_id_' + content.rstrip('@')
-
-            elif type_ == 'number':
-                content = content.rstrip('#')
-
-            if type_ == 'directive' or type_ == 'include' or type_ == 'op' or type_ == 'type' or type_ == 'keyword' or type_ == 'APIcall':
-                if type_ == 'op' and prev_type_was_op:
-                    result = result[:-1] + content + ' '
-                else:
-                    result += content + ' '
-
-            elif type_ == 'id':
-                result += content + ' '
-
-            elif type_ == 'number':
-                if literal_seq is None:
-                    result += '0 '
-                else:
-                    result += '%s ' % literal_seq[0]
-                    literal_seq = literal_seq[1:]
-
-            elif type_ == 'string':
-                if literal_seq is None:
-                    result += '"String" '
-                else:
-                    result += '%s ' % literal_seq[0]
-                    literal_seq = literal_seq[1:]
-
-            elif type_ == 'char':
-                if literal_seq is None:
-                    result += "'c' "
-                else:
-                    result += '%s ' % literal_seq[0]
-                    literal_seq = literal_seq[1:]
-
-        except ValueError:
-            if token == '~':
-                pass
-
-    if not clang_format:
-        return result
-
-    source_file = tempfile.NamedTemporaryFile(suffix=".c", delete=False)
-    source_file.write(result)
-    source_file.close()
-
-    shell_string = 'clang-format %s' % source_file.name
-    clang_output = subprocess.check_output(
-        shell_string, timeout=30, shell=True)
-    os.unlink(source_file.name)
-
-    return clang_output
-
-
-def get_best_checkpoint(checkpoint_directory):
-
-    def get_best_checkpoint_in_dir(checkpoint_dir):
-        best_checkpoint = None
-        for checkpoint_name in os.listdir(checkpoint_dir):
-            if 'meta' in checkpoint_name:
-                this_checkpoint = int(checkpoint_name[17:].split('.')[0])
-
-                if best_checkpoint is None or this_checkpoint > best_checkpoint:
-                    best_checkpoint = this_checkpoint
-
-        return best_checkpoint
-
-    bc = get_best_checkpoint_in_dir(os.path.join(checkpoint_directory, 'best'))
-    if bc is None:
-        bc = get_best_checkpoint_in_dir(checkpoint_directory)
-    if bc is None:
-        raise ValueError('No checkpoints found!')
-    return bc
 
 
 def make_equal_size_matrices(y, y_hat):
