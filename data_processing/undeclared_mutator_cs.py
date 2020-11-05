@@ -98,10 +98,7 @@ def undeclare_variable(rng, old_program, program_string):
     structs_deep = 0
 
     for i, line in enumerate(orig_lines):
-        # Should be _<id>_\d+ ???
-        if len(re.findall('_<keyword>_struct _<id>_\d@ _<op>_\{', line)) > 0 or \
-           len(re.findall('_<keyword>_union _<id>_\d@ _<op>_\{', line)) > 0 or \
-           len(re.findall('_<keyword>_enum _<id>_\d@ _<op>_\{', line)) > 0:
+        if len(re.findall('_<keyword>_class _<id>_\d+@ _<op>_\{', line)) > 0:
             structs_deep += len(re.findall('_<op>_\{', line))
         elif structs_deep > 0:
             structs_deep += len(re.findall('_<op>_\{', line))
@@ -141,11 +138,24 @@ def undeclare_variable(rng, old_program, program_string):
         rng.shuffle(shuffled_lines)
 
         # NEW
-        # Should consider const case and typedef???
-        regex_alone_use = '(_<keyword>_(?:struct|enum|union) _<id>_\d+@|_<type>_\w+)((?: _<op>_\*)* %s(?: _<op>_\[(?: [^\]]+)? _<op>_\])*)(?: _<op>_= [^,;]+)(?: _<op>_;)' % to_undeclare
-        regex_alone = '((?:_<keyword>_(?:struct|enum|union) _<id>_\d+@|_<type>_\w+)(?: _<op>_\*)* %s(?: _<op>_\[(?: [^\]]+)? _<op>_\])* _<op>_;)' % to_undeclare
-        regex_group_leader = '((?:_<keyword>_(?:struct|enum|union) _<id>_\d+@|_<type>_\w+)(?: _<op>_\*)*)( %s(?: _<op>_\[(?: [^\]]+)? _<op>_\])*)(?: _<op>_= [^,;]+)?( _<op>_,)(?:(?: _<op>_\*)* _<id>_\d+@(?: _<op>_\[(?: [^\]]+)? _<op>_\])*(?: _<op>_= [^,;]+)? _<op>_,)*(?:(?: _<op>_\*)* _<id>_\d+@(?: _<op>_\[(?: [^\]]+)? _<op>_\])*(?: _<op>_= [^,;]+)? _<op>_;)' % to_undeclare
-        regex_group = '(_<keyword>_(?:struct|enum|union) _<id>_\d+@|_<type>_\w+)(?: _<op>_\*)* _<id>_\d+@(?: _<op>_\[(?: [^\]]+)? _<op>_\])*(?: _<op>_= [^,;]+)?(?: _<op>_,(?: _<op>_\*)* _<id>_\d+@(?: _<op>_\[(?: [^\]]+)? _<op>_\])*(?: _<op>_= [^,;]+)?)*( _<op>_,(?: _<op>_\*)* %s(?: _<op>_\[(?: [^\]]+)? _<op>_\])*(?: _<op>_= [^,;]+)?)(?: _<op>_,(?: _<op>_\*)* _<id>_\d+@(?: _<op>_\[(?: [^\]]+)? _<op>_\])*(?: _<op>_= [^,;]+)?)*(?: _<op>_;)' % to_undeclare
+        regex_cs = re.compile(r'''
+            (?P<decl>
+                (?P<type>
+                    (
+                        _<type>_\w+
+                      | _<id>_\d+@
+                    )
+                    (
+                        \ _<op>_\[
+                        \ _<op>_\]
+                    )*
+                )
+              \ {}
+            )
+          \ _<op>_=
+          \ [^,;]+
+          \ _<op>_;
+        '''.format(to_undeclare), re.X)
 
         fix_line = None
         declaration = None
@@ -153,54 +163,12 @@ def undeclare_variable(rng, old_program, program_string):
 
         # Start our search upwards
         for i in shuffled_lines:
-            if len(re.findall(regex_alone_use, orig_lines[i])) == 1:
-                m = re.search(regex_alone_use, orig_lines[i])
-                declaration = orig_lines[i][m.start(1):m.end(2)] + ' _<op>_;'
+            findall = regex_cs.findall(orig_lines[i])
+            if len(findall) == 1:
+                declaration = findall[0].group('decl') + ' _<op>_;'
                 declaration_pos = i
-
-                # Mutate
-                orig_lines[i] = orig_lines[i][:m.start(
-                    1)] + orig_lines[i][m.end(1) + 1:]
-                done = True
-                break
-
-            if len(re.findall(regex_alone, orig_lines[i])) == 1:
-                m = re.search(regex_alone, orig_lines[i])
-                declaration = orig_lines[i][m.start(1):m.end(1)]
-                declaration_pos = i
-
-                # Mutate
-                orig_lines[i] = orig_lines[i][:m.start(
-                    1)] + orig_lines[i][m.end(1) + 1:]
-                done = True
-                break
-
-            elif len(re.findall(regex_group, orig_lines[i])) == 1:
-                m = re.search(regex_group, orig_lines[i])
-                declaration = orig_lines[i][m.start(1):m.end(
-                    1)] + orig_lines[i][m.start(2):m.end(2)][8:] + ' _<op>_;'
-                declaration_pos = i
-
-                try:
-                    end_of_declr = declaration.index('_<op>_=')
-                    declaration = declaration[:end_of_declr]
-                except ValueError:
-                    pass
-
-                # Mutate
-                orig_lines[i] = orig_lines[i][:m.start(
-                    2) + 1] + orig_lines[i][m.end(2) + 1:]
-                done = True
-                break
-
-            elif len(re.findall(regex_group_leader, orig_lines[i])) == 1:
-                m = re.search(regex_group_leader, orig_lines[i])
-                declaration = orig_lines[i][m.start(1):m.end(2)] + ' _<op>_;'
-                declaration_pos = i
-
-                # Mutate
-                orig_lines[i] = orig_lines[i][:m.start(
-                    2) + 1] + orig_lines[i][m.end(3) + 1:]
+                l, r = findall[0].span('type')
+                orig_lines[i] = orig_lines[i][:l] + orig_lines[i][r+1:]
                 done = True
                 break
 
@@ -209,14 +177,26 @@ def undeclare_variable(rng, old_program, program_string):
         raise NothingToMutateException
 
     # Find the function signature
-    fn_regex = '(?:_<keyword>_(?:struct|union|enum) _<id>_\d+@|_<type>_\w+|_<keyword>_void)(?: _<op>_\*)* (?:_<id>_\d+@|_<APIcall>_main) _<op>_\('
+    fn_regex_cs = re.compile(r'''
+        (
+            _<type>_\w+
+          | _<keyword>_void
+          | _<id>_\d+@
+        )
+        (
+            \ _<op>_\[
+            \ _<op>_\]
+        )*
+      \ _<id>_\d+@
+      \ _<op>_\(
+    ''', re.X)
     fn_start_regex = '_<op>_\{'
     inserted = False
 
     assert declaration_pos is not None
     # Why 0 instead of -1???
     for i in range(declaration_pos, 0, -1):
-        if len(re.findall(fn_regex, old_lines[i])) == 1:
+        if len(fn_regex_cs.findall(old_lines[i])) == 1:
             for j in range(i, len(old_lines)):
                 if len(re.findall(fn_start_regex, old_lines[i])) >= 1:
                     fix_line = j

@@ -24,22 +24,25 @@ Token = collections.namedtuple('Token', ['typ', 'value', 'line', 'column'])
 
 
 class CS_Tokenizer(Tokenizer):
-    _keywords = ['abstract', 'as', 'base', 'bool', 'break', 'byte', 'case',
-                 'catch', 'char', 'checked', 'class', 'const', 'continue',
-                 'decimal', 'default', 'delegate', 'do', 'double', 'else',
-                 'enum', 'event', 'explicit', 'extern', 'false', 'finally',
-                 'fixed', 'float', 'for', 'foreach', 'goto', 'if', 'implicit',
-                 'in', 'int', 'interface', 'internal', 'is', 'lock', 'long',
-                 'namespace', 'new', 'null', 'object', 'operator', 'out',
-                 'override', 'params', 'private', 'protected', 'public',
-                 'readonly', 'ref', 'return', 'sbyte', 'sealed', 'short',
-                 'sizeof', 'stackalloc', 'static', 'string', 'struct',
-                 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'uint',
-                 'ulong', 'unchecked', 'unsafe', 'ushort', 'using', 'virtual',
-                 'void', 'volatile', 'while']
-    # _calls = ['printf', 'scanf', 'cin', 'cout', 'clrscr', 'getch', 'strlen',
-    #           'gets', 'fgets', 'getchar', 'main', 'malloc', 'calloc', 'free']
-    # _types = ['char', 'double', 'float', 'int', 'long', 'short', 'unsigned']
+    _keywords = ['abstract', 'add', 'alias', 'as', 'ascending', 'async',
+                 'await', 'base', 'break', 'by', 'case', 'catch', 'checked',
+                 'class', 'const', 'continue', 'default', 'delegate',
+                 'descending', 'do', 'else', 'enum', 'equals', 'event',
+                 'explicit', 'extern', 'false', 'finally', 'fixed', 'for',
+                 'foreach', 'from', 'get', 'global', 'goto', 'group', 'if',
+                 'implicit', 'in', 'interface', 'internal', 'into', 'is',
+                 'join', 'let', 'lock', 'nameof', 'namespace', 'new',
+                 'notnull', 'null', 'on', 'operator', 'orderby', 'out',
+                 'override', 'params', 'partial', 'private', 'protected',
+                 'public', 'readonly', 'ref', 'remove', 'return', 'sealed',
+                 'select', 'set', 'sizeof', 'stackalloc', 'static', 'struct',
+                 'switch', 'this', 'throw', 'true', 'try', 'typeof',
+                 'unchecked', 'unmanaged', 'unsafe', 'using', 'value', 'var',
+                 'virtual', 'void', 'volatile', 'when', 'where', 'while',
+                 'yield']
+    _types = ['bool', 'byte', 'char', 'decimal', 'double', 'dynamic', 'float',
+              'int', 'long', 'object', 'sbyte', 'short', 'string', 'uint',
+              'ulong', 'ushort']
 
     def _escape(self, string):
         return repr(string)[1:-1]
@@ -133,17 +136,9 @@ class CS_Tokenizer(Tokenizer):
                 result += '_<keyword>_' + self._escape(value) + ' '
                 isNewLine = False
 
-            elif type_ == 'include':
-                result += '_<include>_' + self._escape(value).lstrip() + ' '
+            elif value in self._types:
+                result += '_<type>_' + self._escape(value) + ' '
                 isNewLine = False
-
-            # elif value in self._calls:
-            #     result += '_<APIcall>_' + self._escape(value) + ' '
-            #     isNewLine = False
-
-            # elif value in self._types:
-            #     result += '_<type>_' + self._escape(value) + ' '
-            #     isNewLine = False
 
             elif type_ == 'whitespace' and (('\n' in value) or ('\r' in value)):
                 if isNewLine:
