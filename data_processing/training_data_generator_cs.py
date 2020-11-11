@@ -89,7 +89,7 @@ def generate_training_data(bins, min_program_length, max_program_length,
         mutate = partial(typo_mutate, mutator_obj)
         def rename_ids(x, y): return x, y
     else:
-        from data_processing.undeclared_mutator import LoopCountThresholdExceededException, FailedToMutateException, id_mutate
+        from data_processing.undeclared_mutator_cs import LoopCountThresholdExceededException, FailedToMutateException, id_mutate
         mutate = partial(id_mutate, rng)
         rename_ids = partial(rename_ids_, rng)
 
@@ -98,11 +98,6 @@ def generate_training_data(bins, min_program_length, max_program_length,
     exceptions_in_mutate_call = 0
     total_mutate_calls = 0
     program_lengths, fix_lengths = [], []
-
-    problem_list = []
-    for bin_ in bins:
-        for problem_id in bin_:
-            problem_list.append(problem_id)
 
     for problem_id, tokenized_code in get_cs_tokenized().items():
         program_length = len(tokenized_code.split())
@@ -153,7 +148,7 @@ def generate_training_data(bins, min_program_length, max_program_length,
     print 'Total mutate calls:', total_mutate_calls
     print 'Exceptions in mutate() call:', exceptions_in_mutate_call, '\n'
 
-    return token_strings, mutator_obj.get_mutation_distribution() if kind_mutations == 'typo' else {}
+    return token_strings, mutator_obj.get_mutation_distribution() if kind_mutations == 'typo' else {}, rng
 
 
 def build_dictionary(token_strings, drop_ids, tl_dict={}):
@@ -248,13 +243,13 @@ def save_pairs(destination, token_vectors, tl_dict):
         save_dictionaries(destination, tl_dict)
 
 
-def save_bins(destination, tl_dict, token_vectors, bins):
-    full_list = []
-
-    for bin_ in bins:
-        for problem_id in bin_:
-            full_list.append(problem_id)
-
+def save_bins(destination, tl_dict, token_vectors, rng):
+    fold_n = 5
+    bins = []
+    full_list = get_cs_tokenized().keys()
+    rng.shuffle(full_list)
+    for i in range(fold_n):
+        bins.append(full_list[len(full_list)*i//fold_n:len(full_list)*(i+1)//fold_n])
     for i, bin_ in enumerate(bins):
         test_problems = bin_
         training_problems = list(set(full_list) - set(bin_))
@@ -264,6 +259,7 @@ def save_bins(destination, tl_dict, token_vectors, bins):
         for problem_id in training_problems:
             if problem_id in token_vectors['train']:
                 token_vectors_this_fold['train'] += token_vectors['train'][problem_id]
+            if problem_id in token_vectors['validation']:
                 token_vectors_this_fold['validation'] += token_vectors['validation'][problem_id]
 
         for problem_id in test_problems:
@@ -296,7 +292,7 @@ if __name__ == '__main__':
     max_fix_length = 25
 
     max_mutations = 5
-    max_variants = 4 if kind_mutations == 'ids' else 2
+    max_variants = 4000 if kind_mutations == 'ids' else 2000
 
     db_path = os.path.join('data', 'iitk-dataset', 'dataset.db')
     validation_users = np.load(os.path.join('data', 'iitk-dataset', 'validation_users.npy'), allow_pickle=True).item()
@@ -309,7 +305,7 @@ if __name__ == '__main__':
     print 'output_directory:', output_directory
     make_dir_if_not_exists(os.path.join(output_directory))
 
-    token_strings, mutations_distribution = generate_training_data(bins, min_program_length, max_program_length, max_fix_length,
+    token_strings, mutations_distribution, rng = generate_training_data(bins, min_program_length, max_program_length, max_fix_length,
                                                                    kind_mutations, max_mutations, max_variants, seed)
 
     np.save(os.path.join(output_directory, 'tokenized-examples.npy'), token_strings)
@@ -323,6 +319,6 @@ if __name__ == '__main__':
     token_vectors = vectorize_data(token_strings, tl_dict, max_program_length, max_fix_length, drop_ids)
 
     # Save
-    save_bins(output_directory, tl_dict, token_vectors, bins)
+    save_bins(output_directory, tl_dict, token_vectors, rng)
 
     print '\n\n--------------- all outputs written to {} ---------------\n\n'.format(output_directory)

@@ -88,63 +88,14 @@ def which_fix_goes_first(program, fix1, fix2):
     assert False, 'unreachable code'
 
 
-def undeclare_variable(rng, old_program, program_string):
-    # Lines
-    orig_lines = get_lines(program_string)
-    old_lines = get_lines(old_program)
-
-    # Lines to ignore
-    struct_lines = []
-    structs_deep = 0
-
-    for i, line in enumerate(orig_lines):
-        if len(re.findall('_<keyword>_class _<id>_\d+@ _<op>_\{', line)) > 0:
-            structs_deep += len(re.findall('_<op>_\{', line))
-        elif structs_deep > 0:
-            structs_deep += len(re.findall('_<op>_\{', line))
-            structs_deep -= len(re.findall('_<op>_\}', line))
-            assert structs_deep >= 0, str(structs_deep) + " " + line
-            struct_lines.append(i)
-
-    global_lines = []
-    brackets_deep = 0
-
-    for i, line in enumerate(orig_lines):
-        if len(re.findall('_<op>_\{', line)) > 0 or len(re.findall('_<op>_\}', line)) > 0:
-            brackets_deep += len(re.findall('_<op>_\{', line))
-            brackets_deep -= len(re.findall('_<op>_\}', line))
-            assert brackets_deep >= 0, str(brackets_deep) + " " + line
-        elif brackets_deep == 0:
-            global_lines.append(i)
-
-    # Variables
-    variables = []
-
-    for token in program_string.split():
-        if '_<id>_' in token:
-            if token not in variables:
-                variables.append(token)
-
-    # Look for a declaration
-    done = False
-
+def find_declaration(rng, variables, line_indexes, orig_lines):
     rng.shuffle(variables)
-
-    for to_undeclare in variables:
-
-        # Find a location (scope) to undeclare it from
-        shuffled_lines = list(set(range(len(orig_lines))) -
-                              set(struct_lines + global_lines))
-        rng.shuffle(shuffled_lines)
-
-        # NEW
-        regex_cs = re.compile(r'''
+    for variable in variables:
+        rng.shuffle(line_indexes)
+        declaration_regex = re.compile(r'''
             (?P<decl>
                 (?P<type>
-                    (
-                        _<type>_\w+
-                      | _<id>_\d+@
-                    )
+                    _<type>_\w+
                     (
                         \ _<op>_\[
                         \ _<op>_\]
@@ -155,87 +106,59 @@ def undeclare_variable(rng, old_program, program_string):
           \ _<op>_=
           \ [^,;]+
           \ _<op>_;
-        '''.format(to_undeclare), re.X)
+        '''.format(variable), re.X)
+        for i in line_indexes:
+            regex_matches = list(declaration_regex.finditer(orig_lines[i]))
+            if len(regex_matches) != 1:
+                continue
+            declaration = regex_matches[0].group('decl') + ' _<op>_;'
+            l, r = regex_matches[0].span('type')
+            orig_lines[i] = orig_lines[i][:l] + orig_lines[i][r+1:]
+            return declaration, i
+    raise NothingToMutateException
 
-        fix_line = None
-        declaration = None
-        declaration_pos = None
 
-        # Start our search upwards
-        for i in shuffled_lines:
-            findall = regex_cs.findall(orig_lines[i])
-            if len(findall) == 1:
-                declaration = findall[0].group('decl') + ' _<op>_;'
-                declaration_pos = i
-                l, r = findall[0].span('type')
-                orig_lines[i] = orig_lines[i][:l] + orig_lines[i][r+1:]
-                done = True
-                break
+def insert_fix(declaration_pos, orig_lines):
+    function_regex = re.compile(r'''
+            (
+                _<type>_\w+
+              | _<keyword>_void
+              | _<id>_\d+@
+            )
+            (
+                \ _<op>_\[
+                \ _<op>_\]
+            )*
+          \ _<id>_\d+@
+          \ _<op>_\(
+        ''', re.X)
+    function_start_regex = re.compile(r'_<op>_\{')
+    for i in range(declaration_pos-1, -1, -1):
+        if len(function_regex.findall(orig_lines[i])) == 1:
+            for j in range(i, declaration_pos+1):
+                if next(function_start_regex.search(orig_lines[j])) is not None:
+                    return j
+    raise FailedToMutateException
 
-    if not done:
-        # Failed to find something to undeclare
-        raise NothingToMutateException
 
+def undeclare_variable(rng, program_string):
+    # Lines
+    orig_lines = get_lines(program_string)
+    # Variables
+    variables = []
+    for token in program_string.split():
+        if '_<id>_' in token and token not in variables:
+            variables.append(token)
+    # Look for a declaration
+    declaration, declaration_pos = find_declaration(
+        rng, variables, list(range(len(orig_lines))), orig_lines)
     # Find the function signature
-    fn_regex_cs = re.compile(r'''
-        (
-            _<type>_\w+
-          | _<keyword>_void
-          | _<id>_\d+@
-        )
-        (
-            \ _<op>_\[
-            \ _<op>_\]
-        )*
-      \ _<id>_\d+@
-      \ _<op>_\(
-    ''', re.X)
-    fn_start_regex = '_<op>_\{'
-    inserted = False
-
-    assert declaration_pos is not None
-    # Why 0 instead of -1???
-    for i in range(declaration_pos, 0, -1):
-        if len(fn_regex_cs.findall(old_lines[i])) == 1:
-            for j in range(i, len(old_lines)):
-                if len(re.findall(fn_start_regex, old_lines[i])) >= 1:
-                    fix_line = j
-                    break
-            inserted = True
-
-        if inserted:
-            break
-
-    if not inserted:
-        # print Failed to insert fix
-        raise FailedToMutateException
-    if fix_line is None:
-        # Couldn't find { after function definition
-        raise FailedToMutateException
-
-    fix = '_<insertion>_ '
-
-    assert fix_line is not None
-
-    for digit in str(fix_line):
-        fix += str(digit) + ' '
-
-    fix += '~ ' + declaration
-
+    fix_line = insert_fix(declaration_pos, orig_lines)
+    fix = '_<insertion>_ {} ~ {}'.format(' '.join(str(fix_line)), declaration)
+    # ...
     if orig_lines[declaration_pos].strip() == '':
-        to_delete = declaration_pos
-        del orig_lines[to_delete]
-
-    recomposed_program = ''
-
-    for i, line in enumerate(orig_lines):
-        for digit in str(i):
-            recomposed_program += digit + ' '
-
-        recomposed_program += '~ '
-        recomposed_program += line + ' '
-
-    return recomposed_program, fix, fix_line
+        del orig_lines[declaration_pos]
+    return recompose_program(orig_lines), fix, fix_line
 
 
 def id_mutate(rng, prog, max_num_mutations, num_mutated_progs, exact=False, name_dict=None):
@@ -257,13 +180,11 @@ def id_mutate(rng, prog, max_num_mutations, num_mutated_progs, exact=False, name
         for _ in range(num_mutations):
             # Step 2: Induce _[ONE]_ mutation, removing empty lines and shifting program if required
             try:
-                mutated, this_fix, _ = undeclare_variable(rng, tokens, tokens)
+                mutated, this_fix, _ = undeclare_variable(rng, tokens)
                 mutation_count += 1
-
             # Couldn't delete anything
             except NothingToMutateException:
                 break
-
             # Insertion or something failed
             except FailedToMutateException:
                 raise

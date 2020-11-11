@@ -218,6 +218,7 @@ def undeclare_variable(rng, old_program, program_string):
     for i in range(declaration_pos, 0, -1):
         if len(re.findall(fn_regex, old_lines[i])) == 1:
             for j in range(i, len(old_lines)):
+                # Why i instead of j?
                 if len(re.findall(fn_start_regex, old_lines[i])) >= 1:
                     fix_line = j
                     break
@@ -225,6 +226,7 @@ def undeclare_variable(rng, old_program, program_string):
 
         if inserted:
             break
+    # ^ May boom: int x = 0; /*eol*/ int y = x;
 
     if not inserted:
         # print Failed to insert fix
