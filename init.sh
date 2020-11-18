@@ -19,7 +19,7 @@ cd data
 echo 'Extracting DeepFix dataset...'
 unzip prutor-deepfix-09-12-2017.zip
 mv prutor-deepfix-09-12-2017/* iitk-dataset/
-rm -rf prutor-deepfix-09-12-2017 prutor-deepfix-09-12-2017.zip
+rm -rf prutor-deepfix-09-12-2017
 cd iitk-dataset/
 gunzip prutor-deepfix-09-12-2017.db.gz
 mv prutor-deepfix-09-12-2017.db dataset.db
