@@ -138,6 +138,8 @@ dmypy.json
 cython_debug/
 
 # Others
+/data/checkpoints/
+/data/network_inputs/
 /data/iitk-dataset/**/*
 /logs/
 /temp/

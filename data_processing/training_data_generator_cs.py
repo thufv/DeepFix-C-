@@ -101,7 +101,7 @@ def generate_training_data(bins, min_program_length, max_program_length,
 
     for problem_id, tokenized_code in get_cs_tokenized().items():
         program_length = len(tokenized_code.split())
-        key = 'validation' if rng.rand() < 0.2 else 'train'
+        key = 'train'
 
         program_lengths.append(program_length)
 
@@ -243,6 +243,30 @@ def save_pairs(destination, token_vectors, tl_dict):
         save_dictionaries(destination, tl_dict)
 
 
+def my_save_bins(destination, tl_dict, token_vectors, rng):
+    full_list = get_cs_tokenized().keys()
+    rng.shuffle(full_list)
+    fold_n = 5
+    bins = []
+    for i in range(fold_n):
+        bins.append(full_list[len(full_list)*i//fold_n:len(full_list)*(i+1)//fold_n])
+    for i, bin_ in enumerate(bins):
+        token_vectors_this_fold = {'train': [], 'validation': [], 'test': []}
+        for problem_id in set(full_list) - set(bin_):
+            if rng.rand() < 0.8:
+                token_vectors_this_fold['train'] += token_vectors['train'][problem_id]
+            else:
+                token_vectors_this_fold['validation'] += token_vectors['train'][problem_id]
+        for problem_id in bin_:
+            token_vectors_this_fold['test'] += token_vectors['train'][problem_id]
+        print('Fold {}: (Train, Validation, Test) == ({} {} {})'.format(i,
+            len(token_vectors_this_fold['train']),
+            len(token_vectors_this_fold['validation']),
+            len(token_vectors_this_fold['test'])))
+        make_dir_if_not_exists(os.path.join(destination, 'bin_{}'.format(i)))
+        save_pairs(os.path.join(destination,
+            'bin_{}'.format(i)), token_vectors_this_fold, tl_dict)
+
 def save_bins(destination, tl_dict, token_vectors, rng):
     fold_n = 5
     bins = []
@@ -292,7 +316,7 @@ if __name__ == '__main__':
     max_fix_length = 25
 
     max_mutations = 5
-    max_variants = 4000 if kind_mutations == 'ids' else 2000
+    max_variants = 4000 if kind_mutations == 'ids' else 50
 
     db_path = os.path.join('data', 'iitk-dataset', 'dataset.db')
     validation_users = np.load(os.path.join('data', 'iitk-dataset', 'validation_users.npy'), allow_pickle=True).item()
@@ -319,6 +343,6 @@ if __name__ == '__main__':
     token_vectors = vectorize_data(token_strings, tl_dict, max_program_length, max_fix_length, drop_ids)
 
     # Save
-    save_bins(output_directory, tl_dict, token_vectors, rng)
+    my_save_bins(output_directory, tl_dict, token_vectors, rng)
 
     print '\n\n--------------- all outputs written to {} ---------------\n\n'.format(output_directory)
