@@ -10,3 +10,4 @@ echo y | conda install subprocess32 tensorflow-gpu==1.0.1 regex
 mkdir logs
 export PYTHONPATH=.
 python data_processing/training_data_generator_cs.py
+bash neural_net/1fold-train.sh
