@@ -269,8 +269,7 @@ def save_bins(destination, tl_dict, token_vectors, bins):
         print "Fold %d: Train:%d Validation:%d Test:%d" % (i, len(token_vectors_this_fold['train']),
                                                            len(token_vectors_this_fold['validation']), len(token_vectors_this_fold['test']))
 
-        save_pairs(os.path.join(destination, 'bin_%d' %
-                                i), token_vectors_this_fold, tl_dict)
+        save_pairs(os.path.join(destination, 'bin_%d' % i), token_vectors_this_fold, tl_dict)
 
 ######## data generation #########
 

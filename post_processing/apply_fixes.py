@@ -82,8 +82,7 @@ def do_problem(problem_id):
         name_dict = json.loads(row[3])
         name_seq = json.loads(row[4])
 
-        candidate_programs.append(
-            (user_id, prog_id, initial, name_dict, name_seq,))
+        candidate_programs.append((user_id, prog_id, initial, name_dict, name_seq))
 
     for _, prog_id, initial, name_dict, name_seq in candidate_programs:
         fixes_suggested_by_typo_network = []
@@ -119,6 +118,7 @@ def do_problem(problem_id):
                 else:
                     break
 
+        # Location, Local???
         except InvalidFixLocationException:
             print 'Localization failed'
 
@@ -229,8 +229,8 @@ total_numerator = 0
 total_denominator = 0
 
 for problem_id in errors_test:
-    print problem_id,
-    print '%d/%d' % (total_fixes_num[problem_id], sum([len(x[0]) for x in errors_test[problem_id]])),
+    print problem_id
+    print '%d/%d' % (total_fixes_num[problem_id], sum([len(x[0]) for x in errors_test[problem_id]]))
     print '(%g%%)' % (float(total_fixes_num[problem_id]) / sum([len(x[0]) for x in errors_test[problem_id]]) * 100)
 
     total_numerator += total_fixes_num[problem_id]
