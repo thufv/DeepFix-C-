@@ -148,11 +148,6 @@ with tf.variable_scope(scope):
                     )
 
 
-def get_fix(sess, program):
-    X, X_len = tuple(dataset.prepare_batch(program))
-    return seq2seq.sample(sess, X, X_len)[0]
-
-
 def get_fixes_in_batch(sess, programs):
     X, X_len = tuple(dataset.prepare_batch(programs))
     fixes = seq2seq.sample(sess, X, X_len)

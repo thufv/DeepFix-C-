@@ -5,7 +5,7 @@ git clean -dXf
 source /opt/anaconda3/etc/profile.d/conda.sh
 echo y | conda create -n deepfix python=2.7
 conda activate deepfix
-echo y | conda install subprocess32 tensorflow-gpu==1.0.1 regex
+echo y | conda install pathlib regex subprocess32 tensorflow-gpu==1.0.1 typing
 
 mkdir logs
 export PYTHONPATH=.
