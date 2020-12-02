@@ -54,6 +54,20 @@ class MachineWithSingleNetwork:
         # type: () -> load_data
         return self.dataset.get_tl_dictionary()
 
+    def get_task(self):
+        # type: () -> str
+        return self.configuration['which_network']
+
+    def is_id_dropped(self):
+        # type: () -> bool
+        return self.get_task() == 'typo'
+
+    def get_fix_kind(self):
+        # type: () -> str
+        if self.get_task() == 'typo':
+            return 'replace'
+        return 'insert'
+
     @staticmethod
     def get_best_checkpoint_identifier(checkpoint_path):
         # type: (Path) -> int
@@ -90,20 +104,6 @@ class MachineWithSingleNetwork:
         return MachineWithSingleNetwork(
             configuration=configuration, dataset=dataset, raw_model=raw_model,
             tf_session=session)
-
-    def get_task(self):
-        # type: () -> str
-        return self.configuration['which_network']
-
-    def is_id_dropped(self):
-        # type: () -> bool
-        return self.get_task() == 'typo'
-
-    def get_fix_kind(self):
-        # type: () -> str
-        if self.get_task() == 'typo':
-            return 'replace'
-        return 'insert'
 
     def vectorize(self, tokenized_code):
         # type: (str) -> Optional[List[int]]
