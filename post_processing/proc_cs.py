@@ -224,10 +224,12 @@ class MachineWithSingleNetwork:
 
 
 def get_code_paths_with_sequence_of_code(root):
-    # type: (Path) -> Iterable[Tuple[Path, str]]
+    # type: (Path) -> List[Tuple[Path, str]]
+    results = []
     for code_path in root.glob('*/*.cs'):  # type: Path
         with open(str(code_path)) as f:
-            yield code_path, f.read()
+            results.append((code_path, f.read()))
+    return results
 
 
 def into_json(code_paths, process_results):
