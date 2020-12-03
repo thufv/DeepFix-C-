@@ -210,7 +210,7 @@ class MachineWithSingleNetwork:
         results = []
         for fix_status in sequence_of_fix_status:
             if isinstance(fix_status, str):
-                results.append((fix_status, 0))
+                results.append(fix_status)
             else:
                 tokenized_code = fix_status.tokenized_code
                 tokenized_code_2 = fix_status.tokenized_code_2
