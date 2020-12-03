@@ -77,8 +77,7 @@ class CS_Tokenizer(Tokenizer):
     def _sanitize_brackets(self, tokens_string):
         lines = get_lines(tokens_string)
 
-        if len(lines) == 1:
-            # Should be lines == ['']???
+        if lines == ['']:
             raise EmptyProgramException(tokens_string)
 
         for i in range(len(lines) - 1, -1, -1):

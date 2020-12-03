@@ -1,9 +1,11 @@
+import json
 import math
 import re
 import sys
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
+import subprocess32 as subprocess
 import tensorflow as tf
 from pathlib import Path
 
@@ -11,7 +13,7 @@ from data_processing.training_data_generator_cs import vectorize
 from neural_net.train import load_data, seq2seq_model
 from util.cs_tokenizer import CS_Tokenizer
 from util.helpers import apply_fix, tokens_to_source, vstack_with_right_padding
-from .postprocessing_helpers import devectorize, meets_criterion
+from post_processing.postprocessing_helpers import devectorize, meets_criterion
 
 
 class MachineWithSingleNetwork:
@@ -19,17 +21,33 @@ class MachineWithSingleNetwork:
     class FixProgress:
 
         def __init__(self, tokenized_code, tokenized_code_2,
-                     name_dict, error_count):
-            # type: (str, str, Dict[str, str], int) -> None
+                     name_dict, error_count, iteration_count):
+            # type: (str, str, Dict[str, str], int, int) -> None
             self.tokenized_code = tokenized_code
             self.tokenized_code_2 = tokenized_code_2
             self.name_dict = name_dict
             self.error_count = error_count
+            self.iteration_count = iteration_count
 
         @staticmethod
         def get_error_count(code):
             # type: (str) -> int
-            raise NotImplementedError
+            from subprocess32 import PIPE
+            if Path('a.cs').exists():
+                raise RuntimeError
+            with open('a.cs', 'w') as f:
+                f.write(code)
+            compilation_result = subprocess.run(
+                ['mcs', 'a.cs'], stdout=PIPE, stderr=PIPE)
+            if compilation_result.returncode == 0:
+                count = 0
+            else:
+                count = len(re.findall(r'a.cs\(\d+,\d+\): error',
+                                       compilation_result.stderr))
+            Path('a.cs').unlink()
+            if Path('a.exe').exists():
+                Path('a.exe').unlink()
+            return count
 
         @staticmethod
         def from_code(code):
@@ -41,7 +59,8 @@ class MachineWithSingleNetwork:
             tokenized_code, name_dict, _ = CS_Tokenizer().tokenize(code)
             return MachineWithSingleNetwork.FixProgress(
                 tokenized_code=tokenized_code, tokenized_code_2=tokenized_code,
-                name_dict=name_dict, error_count=error_count)
+                name_dict=name_dict, error_count=error_count,
+                iteration_count=0)
 
     def __init__(self, configuration, dataset, raw_model, tf_session):
         # type: (Any, load_data, seq2seq_model, tf.Session) -> None
@@ -135,7 +154,7 @@ class MachineWithSingleNetwork:
         return fixes
 
     def process_many(self, sequence_of_code):
-        # type: (Iterable[str]) -> List[Tuple[str, int]]
+        # type: (Iterable[str]) -> List[Tuple[str, str, int, int]]
         sequence_of_fix_status = [
             MachineWithSingleNetwork.FixProgress.from_code(code)
             for code in sequence_of_code
@@ -185,6 +204,7 @@ class MachineWithSingleNetwork:
                 fix_progress.tokenized_code = tokenized_fixed
                 fix_progress.tokenized_code_2 = tokenized_fixed_2
                 fix_progress.error_count = error_count_new
+                fix_progress.iteration_count += 1
             for i in reversed(indices_unneeded_to_fix):
                 del needed_to_fix[i]
         results = []
@@ -193,25 +213,48 @@ class MachineWithSingleNetwork:
                 results.append((fix_status, 0))
             else:
                 tokenized_code = fix_status.tokenized_code
+                tokenized_code_2 = fix_status.tokenized_code_2
                 name_dict = fix_status.name_dict
                 error_count = fix_status.error_count
+                iteration_count = fix_status.iteration_count
                 results.append((tokens_to_source(tokenized_code, name_dict),
-                                error_count))
+                                tokens_to_source(tokenized_code_2, name_dict),
+                                error_count, iteration_count))
         return results
 
 
-def get_sequence_of_code(root):
-    # type: (Path) -> Iterable[str]
+def get_code_paths_with_sequence_of_code(root):
+    # type: (Path) -> Iterable[Tuple[Path, str]]
     for code_path in root.glob('*/*.cs'):  # type: Path
-        with open(str(code_path)) as file:
-            yield file.read()
+        with open(str(code_path)) as f:
+            yield code_path, f.read()
+
+
+def into_json(code_paths, process_results):
+    # type: (Iterable[Path], List[Tuple[str, str, int, int]]) -> str
+    return json.dumps({
+        str(path): {
+            'fixed': result[0],
+            'fixed_2': result[1],
+            'error_count': result[2],
+            'iteration_count': result[3],
+        }
+        for path, result in zip(code_paths, process_results)
+    }, indent=4)
 
 
 def main():
     # type: () -> None
+    code_paths_with_sequence_of_code =\
+        get_code_paths_with_sequence_of_code(Path(sys.argv[1]))
     checkpoint_path = Path('data/checkpoints/iitk-typo-1189/bin_0/')
     machine =\
         MachineWithSingleNetwork.from_checkpoint_directory(checkpoint_path)
+    print(into_json(
+        (item[0] for item in code_paths_with_sequence_of_code),
+        machine.process_many(item[1] for item in
+                             code_paths_with_sequence_of_code),
+    ))
 
 
 if __name__ == '__main__':
