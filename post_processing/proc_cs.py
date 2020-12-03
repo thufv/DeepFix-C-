@@ -162,7 +162,8 @@ class MachineWithSingleNetwork:
             fix_status for fix_status in sequence_of_fix_status
             if isinstance(fix_status, MachineWithSingleNetwork.FixProgress)
         ]  # type: List[MachineWithSingleNetwork.FixProgress]
-        while needed_to_fix:
+        attempt_count = 0
+        while needed_to_fix and attempt_count < 5:
             indices_unneeded_to_fix = []
             vectors = []
             for i, fix_progress in enumerate(needed_to_fix):
@@ -206,6 +207,7 @@ class MachineWithSingleNetwork:
                 fix_progress.iteration_count += 1
             for i in reversed(indices_unneeded_to_fix):
                 del needed_to_fix[i]
+            attempt_count += 1
         results = []
         for fix_status in sequence_of_fix_status:
             if isinstance(fix_status, str):
@@ -227,7 +229,10 @@ def get_code_paths_with_sequence_of_code(root):
     results = []
     for code_path in root.glob('*/*.cs'):  # type: Path
         with open(str(code_path)) as f:
-            results.append((code_path, f.read()))
+            content = f.read()
+            if content.startswith('\xef\xbb\xbf'):
+                content = content[3:]
+            results.append((code_path, content))
     return results
 
 
