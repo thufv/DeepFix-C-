@@ -146,3 +146,5 @@ cython_debug/
 !/data/iitk-dataset/bins.npy
 !/data/iitk-dataset/problem_statements.tar.gz
 !/data/iitk-dataset/validation_users.npy
+!/a.cs
+!/a.exe
