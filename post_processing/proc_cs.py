@@ -154,7 +154,7 @@ class MachineWithSingleNetwork:
         return fixes
 
     def process_many(self, sequence_of_code):
-        # type: (Iterable[str]) -> List[Tuple[str, str, int, int]]
+        # type: (Iterable[str]) -> List[Union[str, Tuple[str, str, int, int]]]
         sequence_of_fix_status = [
             MachineWithSingleNetwork.FixProgress.from_code(code)
             for code in sequence_of_code
@@ -233,9 +233,9 @@ def get_code_paths_with_sequence_of_code(root):
 
 
 def into_json(code_paths, process_results):
-    # type: (Iterable[Path], List[Tuple[str, str, int, int]]) -> str
+    # type: (Iterable[Path], List[Union[str, Tuple[str, str, int, int]]]) -> str
     return json.dumps({
-        str(path): {
+        str(path): result if isinstance(result, str) else {
             'fixed': result[0],
             'fixed_2': result[1],
             'error_count': result[2],
