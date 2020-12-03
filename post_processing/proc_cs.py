@@ -42,8 +42,7 @@ class MachineWithSingleNetwork:
             if compilation_result.returncode == 0:
                 count = 0
             else:
-                count = len(re.findall(r'a.cs\(\d+,\d+\): error',
-                                       compilation_result.stderr))
+                count = len(re.findall(r'\): error', compilation_result.stderr))
             Path('a.cs').unlink()
             if Path('a.exe').exists():
                 Path('a.exe').unlink()
