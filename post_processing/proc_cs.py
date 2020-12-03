@@ -42,7 +42,8 @@ class MachineWithSingleNetwork:
             if compilation_result.returncode == 0:
                 count = 0
             else:
-                count = len(re.findall(r'\): error', compilation_result.stderr))
+                count = len(re.findall(r'\): error',
+                                       compilation_result.stderr))
             Path('a.cs').unlink()
             if Path('a.exe').exists():
                 Path('a.exe').unlink()
@@ -182,16 +183,18 @@ class MachineWithSingleNetwork:
                                             needed_to_fix, fixes):
                 try:
                     tokenized_fixed = apply_fix(
-                        fix_progress.tokenized_code, fix, self.get_fix_kind(),
-                        flag_replace_ids=False)
+                        fix_progress.tokenized_code,
+                        fix, self.get_fix_kind(), flag_replace_ids=False)
                     tokenized_fixed_2 = apply_fix(
-                        fix_progress.tokenized_code_2, fix, self.get_fix_kind())
+                        fix_progress.tokenized_code_2,
+                        fix, self.get_fix_kind())
                 except Exception:
                     indices_unneeded_to_fix.append(i)
                     continue
                 if self.get_task() != 'typo':
                     raise NotImplementedError
-                if not meets_criterion(fix_progress.tokenized_code, fix, 'replace'):
+                if not meets_criterion(fix_progress.tokenized_code,
+                                       fix, 'replace'):
                     indices_unneeded_to_fix.append(i)
                     continue
                 error_count_new = (
