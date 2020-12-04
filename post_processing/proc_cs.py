@@ -257,7 +257,7 @@ class MachineWithSingleNetwork:
 def get_code_paths_with_pieces_of_code(root):
     # type: (Path) -> List[Tuple[Path, str]]
     results = []
-    for code_path in root.glob('*/*.cs'):  # type: Path
+    for code_path in root.glob('**/*.cs'):  # type: Path
         with open(str(code_path)) as f:
             code = f.read()
             if code.startswith('\xef\xbb\xbf'):
