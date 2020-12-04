@@ -18,9 +18,11 @@ from post_processing.postprocessing_helpers import devectorize, meets_criterion
 
 class FixProgress:
 
-    def __init__(self, tokenized_code, tokenized_code_2,
-                    name_dict, error_count, iteration_count):
-        # type: (str, str, Dict[str, str], int, int) -> None
+    def __init__(self, raw_code, raw_error_count, tokenized_code,
+                 tokenized_code_2, name_dict, error_count, iteration_count):
+        # type: (str, int, str, str, Dict[str, str], int, int) -> None
+        self.raw_code = raw_code
+        self.raw_error_count = raw_error_count
         self.tokenized_code = tokenized_code
         self.tokenized_code_2 = tokenized_code_2
         self.name_dict = name_dict
@@ -31,8 +33,6 @@ class FixProgress:
     def get_error_count(code):
         # type: (str) -> int
         from subprocess32 import PIPE
-        if Path('a.cs').exists():
-            raise RuntimeError
         with open('a.cs', 'w') as f:
             f.write(code)
         compilation_result = subprocess.run(
@@ -54,8 +54,51 @@ class FixProgress:
             return code
         tokenized_code, name_dict, _ = CS_Tokenizer().tokenize(code)
         return FixProgress(
+            raw_code=code, raw_error_count=error_count,
             tokenized_code=tokenized_code, tokenized_code_2=tokenized_code,
             name_dict=name_dict, error_count=error_count, iteration_count=0)
+
+
+class FixResult:
+
+    def __init__(self, raw_code, raw_error_count, final_code,
+                 final_error_count, iteration_count):
+        # type: (str, int, str, int, int) -> None
+        self.raw_code = raw_code
+        self.raw_error_count = raw_error_count
+        self.final_code = final_code
+        self.final_error_count = final_error_count
+        self.iteration_count = iteration_count
+
+    @staticmethod
+    def from_correct_code(code):
+        # type: (str) -> FixResult
+        return FixResult(raw_code=code, raw_error_count=0, final_code=code,
+                         final_error_count=0, iteration_count=0)
+
+    @staticmethod
+    def from_final_progress(progress):
+        # type: (FixProgress) -> FixResult
+        raw_code = progress.raw_code
+        raw_error_count = progress.raw_error_count
+        final_tokenized_code = progress.tokenized_code_2
+        final_code = tokens_to_source(final_tokenized_code, progress.name_dict)
+        final_error_count = progress.error_count
+        iteration_count = progress.iteration_count
+        return FixResult(
+            raw_code=raw_code, raw_error_count=raw_error_count,
+            final_code=final_code, final_error_count=final_error_count,
+            iteration_count=iteration_count)
+
+    def as_dict(self):
+        # type: () -> Dict
+        return {
+            'raw_code': self.raw_code,
+            'raw_error_count': self.raw_error_count,
+            'final_code': self.final_code,
+            'final_error_count': self.final_error_count,
+            'iteration_count': self.iteration_count,
+        }
 
 
 class MachineWithSingleNetwork:
@@ -119,8 +162,8 @@ class MachineWithSingleNetwork:
         best = str(path/'best'/'saved-model-attn-{}'.format(best))
         raw_model.load_parameters(session, best)
         return MachineWithSingleNetwork(
-            configuration=configuration, dataset=dataset, raw_model=raw_model,
-            tf_session=session)
+            configuration=configuration, dataset=dataset,
+            raw_model=raw_model, tf_session=session)
 
     def vectorize(self, tokenized_code):
         # type: (str) -> Optional[List[int]]
@@ -152,7 +195,7 @@ class MachineWithSingleNetwork:
         return fixes
 
     def process_many(self, sequence_of_code):
-        # type: (Iterable[str]) -> List[Union[str, Tuple[str, str, int, int]]]
+        # type: (Iterable[str]) -> List[FixResult]
         sequence_of_fix_status = [FixProgress.from_code(code)
                                   for code in sequence_of_code]
         needed_to_fix = [fix_status for fix_status in sequence_of_fix_status
@@ -170,9 +213,8 @@ class MachineWithSingleNetwork:
             for i in reversed(indices_unneeded_to_fix):
                 del needed_to_fix[i]
             indices_unneeded_to_fix = []
-            fixes = [
-                devectorize(vector, self.get_dictionary()) for vector in
-                self._get_fixes_ported_from_initial(vectors)]
+            fixes = [devectorize(vector, self.get_dictionary()) for vector in
+                     self._get_fixes_ported_from_initial(vectors)]
             for i, fix_progress, fix in zip(range(len(needed_to_fix)),
                                             needed_to_fix, fixes):
                 try:
@@ -206,16 +248,9 @@ class MachineWithSingleNetwork:
         results = []
         for fix_status in sequence_of_fix_status:
             if isinstance(fix_status, str):
-                results.append(fix_status)
+                results.append(FixResult.from_correct_code(fix_status))
             else:
-                tokenized_code = fix_status.tokenized_code
-                tokenized_code_2 = fix_status.tokenized_code_2
-                name_dict = fix_status.name_dict
-                error_count = fix_status.error_count
-                iteration_count = fix_status.iteration_count
-                results.append((tokens_to_source(tokenized_code, name_dict),
-                                tokens_to_source(tokenized_code_2, name_dict),
-                                error_count, iteration_count))
+                results.append(FixResult.from_final_progress(fix_status))
         return results
 
 
@@ -232,16 +267,9 @@ def get_code_paths_with_sequence_of_code(root):
 
 
 def into_json(code_paths, process_results):
-    # type: (Iterable[Path], List[Union[str, Tuple[str, str, int, int]]]) -> str
-    return json.dumps({
-        str(path): result if isinstance(result, str) else {
-            'fixed': result[0],
-            'fixed_2': result[1],
-            'error_count': result[2],
-            'iteration_count': result[3],
-        }
-        for path, result in zip(code_paths, process_results)
-    }, indent=4)
+    # type: (Iterable[Path], List[FixResult]) -> str
+    return json.dumps({str(path): result for path, result
+                       in zip(code_paths, process_results)}, indent=4)
 
 
 def main():
@@ -254,8 +282,7 @@ def main():
     print(into_json(
         (item[0] for item in code_paths_with_sequence_of_code),
         machine.process_many(item[1] for item in
-                             code_paths_with_sequence_of_code),
-    ))
+                             code_paths_with_sequence_of_code)))
 
 
 if __name__ == '__main__':
