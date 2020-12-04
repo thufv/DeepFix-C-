@@ -2,18 +2,18 @@ import json
 import math
 import re
 import sys
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import subprocess32 as subprocess
 import tensorflow as tf
 from pathlib import Path
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from data_processing.training_data_generator_cs import vectorize
 from neural_net.train import load_data, seq2seq_model
+from post_processing.postprocessing_helpers import devectorize, meets_criterion
 from util.cs_tokenizer import CS_Tokenizer
 from util.helpers import apply_fix, tokens_to_source, vstack_with_right_padding
-from post_processing.postprocessing_helpers import devectorize, meets_criterion
 
 
 class FixProgress:
@@ -254,35 +254,35 @@ class MachineWithSingleNetwork:
         return results
 
 
-def get_code_paths_with_sequence_of_code(root):
+def get_code_paths_with_pieces_of_code(root):
     # type: (Path) -> List[Tuple[Path, str]]
     results = []
     for code_path in root.glob('*/*.cs'):  # type: Path
         with open(str(code_path)) as f:
-            content = f.read()
-            if content.startswith('\xef\xbb\xbf'):
-                content = content[3:]
-            results.append((code_path, content))
+            code = f.read()
+            if code.startswith('\xef\xbb\xbf'):
+                code = code[3:]
+            results.append((code_path, code))
     return results
 
 
-def into_json(code_paths, process_results):
-    # type: (Iterable[Path], List[FixResult]) -> str
+def into_json(code_paths_with_fix_results):
+    # type: (Iterable[Tuple[Path, FixResult]]) -> str
     return json.dumps({str(path): result for path, result
-                       in zip(code_paths, process_results)}, indent=4)
+                       in code_paths_with_fix_results}, indent=4)
 
 
 def main():
     # type: () -> None
-    code_paths_with_sequence_of_code =\
-        get_code_paths_with_sequence_of_code(Path(sys.argv[1]))
+    code_paths_with_pieces_of_code =\
+        get_code_paths_with_pieces_of_code(Path(sys.argv[1]))
     checkpoint_path = Path('data/checkpoints/iitk-typo-1189/bin_0/')
     machine =\
         MachineWithSingleNetwork.from_checkpoint_directory(checkpoint_path)
-    print(into_json(
-        (item[0] for item in code_paths_with_sequence_of_code),
-        machine.process_many(item[1] for item in
-                             code_paths_with_sequence_of_code)))
+    print(into_json(zip(
+        (path for path, _ in code_paths_with_pieces_of_code),
+        machine.process_many(code for _, code in
+                             code_paths_with_pieces_of_code))))
 
 
 if __name__ == '__main__':
