@@ -268,7 +268,7 @@ def get_code_paths_with_pieces_of_code(root):
 
 def into_json(code_paths_with_fix_results):
     # type: (Iterable[Tuple[Path, FixResult]]) -> str
-    return json.dumps({str(path): result for path, result
+    return json.dumps({str(path): result.as_dict() for path, result
                        in code_paths_with_fix_results}, indent=4)
 
 
