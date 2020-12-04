@@ -143,6 +143,8 @@ cython_debug/
 /data/iitk-dataset/**/*
 /logs/
 /temp/
+/*.stdout
+/*.stderr
 /a.cs
 /a.exe
 !/data/iitk-dataset/bins.npy
