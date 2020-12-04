@@ -16,51 +16,49 @@ from util.helpers import apply_fix, tokens_to_source, vstack_with_right_padding
 from post_processing.postprocessing_helpers import devectorize, meets_criterion
 
 
+class FixProgress:
+
+    def __init__(self, tokenized_code, tokenized_code_2,
+                    name_dict, error_count, iteration_count):
+        # type: (str, str, Dict[str, str], int, int) -> None
+        self.tokenized_code = tokenized_code
+        self.tokenized_code_2 = tokenized_code_2
+        self.name_dict = name_dict
+        self.error_count = error_count
+        self.iteration_count = iteration_count
+
+    @staticmethod
+    def get_error_count(code):
+        # type: (str) -> int
+        from subprocess32 import PIPE
+        if Path('a.cs').exists():
+            raise RuntimeError
+        with open('a.cs', 'w') as f:
+            f.write(code)
+        compilation_result = subprocess.run(
+            ['mcs', 'a.cs'], stdout=PIPE, stderr=PIPE)
+        if compilation_result.returncode == 0:
+            count = 0
+        else:
+            count = len(re.findall(r'\): error', compilation_result.stderr))
+        Path('a.cs').unlink()
+        if Path('a.exe').exists():
+            Path('a.exe').unlink()
+        return count
+
+    @staticmethod
+    def from_code(code):
+        # type: (str) -> Union[str, FixProgress]
+        error_count = FixProgress.get_error_count(code)
+        if error_count == 0:
+            return code
+        tokenized_code, name_dict, _ = CS_Tokenizer().tokenize(code)
+        return FixProgress(
+            tokenized_code=tokenized_code, tokenized_code_2=tokenized_code,
+            name_dict=name_dict, error_count=error_count, iteration_count=0)
+
+
 class MachineWithSingleNetwork:
-
-    class FixProgress:
-
-        def __init__(self, tokenized_code, tokenized_code_2,
-                     name_dict, error_count, iteration_count):
-            # type: (str, str, Dict[str, str], int, int) -> None
-            self.tokenized_code = tokenized_code
-            self.tokenized_code_2 = tokenized_code_2
-            self.name_dict = name_dict
-            self.error_count = error_count
-            self.iteration_count = iteration_count
-
-        @staticmethod
-        def get_error_count(code):
-            # type: (str) -> int
-            from subprocess32 import PIPE
-            if Path('a.cs').exists():
-                raise RuntimeError
-            with open('a.cs', 'w') as f:
-                f.write(code)
-            compilation_result = subprocess.run(
-                ['mcs', 'a.cs'], stdout=PIPE, stderr=PIPE)
-            if compilation_result.returncode == 0:
-                count = 0
-            else:
-                count = len(re.findall(r'\): error',
-                                       compilation_result.stderr))
-            Path('a.cs').unlink()
-            if Path('a.exe').exists():
-                Path('a.exe').unlink()
-            return count
-
-        @staticmethod
-        def from_code(code):
-            # type: (str) -> Union[str, MachineWithSingleNetwork.FixProgress]
-            error_count =\
-                MachineWithSingleNetwork.FixProgress.get_error_count(code)
-            if error_count == 0:
-                return code
-            tokenized_code, name_dict, _ = CS_Tokenizer().tokenize(code)
-            return MachineWithSingleNetwork.FixProgress(
-                tokenized_code=tokenized_code, tokenized_code_2=tokenized_code,
-                name_dict=name_dict, error_count=error_count,
-                iteration_count=0)
 
     def __init__(self, configuration, dataset, raw_model, tf_session):
         # type: (Any, load_data, seq2seq_model, tf.Session) -> None
@@ -155,14 +153,10 @@ class MachineWithSingleNetwork:
 
     def process_many(self, sequence_of_code):
         # type: (Iterable[str]) -> List[Union[str, Tuple[str, str, int, int]]]
-        sequence_of_fix_status = [
-            MachineWithSingleNetwork.FixProgress.from_code(code)
-            for code in sequence_of_code
-        ]  # type: List[Union[str, MachineWithSingleNetwork.FixProgress]]
-        needed_to_fix = [
-            fix_status for fix_status in sequence_of_fix_status
-            if isinstance(fix_status, MachineWithSingleNetwork.FixProgress)
-        ]  # type: List[MachineWithSingleNetwork.FixProgress]
+        sequence_of_fix_status = [FixProgress.from_code(code)
+                                  for code in sequence_of_code]
+        needed_to_fix = [fix_status for fix_status in sequence_of_fix_status
+                         if isinstance(fix_status, FixProgress)]
         attempt_count = 0
         while needed_to_fix and attempt_count < 5:
             indices_unneeded_to_fix = []
@@ -197,10 +191,8 @@ class MachineWithSingleNetwork:
                                        fix, 'replace'):
                     indices_unneeded_to_fix.append(i)
                     continue
-                error_count_new = (
-                    MachineWithSingleNetwork.FixProgress.get_error_count(
-                        tokens_to_source(
-                            tokenized_fixed_2, fix_progress.name_dict, False)))
+                error_count_new = FixProgress.get_error_count(tokens_to_source(
+                    tokenized_fixed_2, fix_progress.name_dict, False))
                 if error_count_new > fix_progress.error_count:
                     indices_unneeded_to_fix.append(i)
                     continue
