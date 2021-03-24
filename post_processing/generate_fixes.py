@@ -35,8 +35,8 @@ parser = argparse.ArgumentParser(
     description="Predict and store fixes in a database.")
 
 parser.add_argument("checkpoint_directory", help="Checkpoint directory")
-parser.add_argument('-dd', "--data_directory", help="Data directory")
-parser.add_argument('-d', "--database", help="sqlite3 database to use")
+parser.add_argument('-d', "--database", help="sqlite3 database to use",
+                    required=True)
 parser.add_argument('-w', '--which', help='Which test data.',
                     choices=['raw', 'seeded'], default="raw")
 parser.add_argument('-b', '--batch_size', type=int,
@@ -66,8 +66,6 @@ parser.add_argument('--is_timing_experiment', action="store_true",
 
 args = parser.parse_args()
 
-database_path = args.checkpoint_directory.replace(
-    '''data/checkpoints/''', '''data/results/''')
 args.checkpoint_directory = args.checkpoint_directory + \
     ('' if args.checkpoint_directory.endswith('/') else '/')
 bin_id = None
@@ -79,21 +77,15 @@ try:
 except:
     raise
 
-if args.database:
-    database = args.database
-else:
-    make_dir_if_not_exists(database_path)
-    database_name = args.which + '_' + args.task + '.db'
-    database = os.path.join(database_path, database_name)
+database = args.database
 
 print 'using database:', database
 
-if not args.data_directory:
-    training_args = np.load(os.path.join(
-        args.checkpoint_directory, 'experiment-configuration.npy'), allow_pickle=True).item()['args']
-    args.data_directory = training_args.data_directory
+training_args = np.load(os.path.join(
+    args.checkpoint_directory, 'experiment-configuration.npy'), allow_pickle=True).item()['args']
+data_directory = training_args.data_directory
 
-print 'data directory:', args.data_directory
+print 'data directory:', data_directory
 
 conn = sqlite3.connect(database)
 c = conn.cursor()
@@ -140,11 +132,11 @@ else:
     best_checkpoint = args.resume_at
 
 # Load data
-dataset = load_data(args.data_directory, shuffle=False, load_only_dicts=True)
+dataset = load_data(data_directory, shuffle=False, load_only_dicts=True)
 dictionary = dataset.get_tl_dictionary()
 
 # Build the network
-scope = 'typo' if 'typo' in args.data_directory else 'ids'
+scope = 'typo' if 'typo' in data_directory else 'ids'
 
 with tf.variable_scope(scope):
     seq2seq = model(dataset.vocabulary_size, args.embedding_dim,
@@ -154,11 +146,6 @@ with tf.variable_scope(scope):
                     num_layers=args.num_layers,
                     dropout=0
                     )
-
-
-def get_fix(sess, program):
-    X, X_len = tuple(dataset.prepare_batch(program))
-    return seq2seq.sample(sess, X, X_len)[0]
 
 
 def get_fixes_in_batch(sess, programs):
@@ -197,10 +184,10 @@ else:
 
 if args.which == 'raw':
     test_dataset = np.load(os.path.join(
-        args.data_directory, 'test_%s_bin_%d.npy' % (args.which, bin_id)), allow_pickle=True).item()
+        data_directory, 'test_%s_bin_%d.npy' % (args.which, bin_id)), allow_pickle=True).item()
 else:
     test_dataset = np.load(os.path.join(
-        args.data_directory, 'test_%s-%s_bin_%d.npy' % (args.which, args.task, bin_id)), allow_pickle=True).item()
+        data_directory, 'test_%s-%s_bin_%d.npy' % (args.which, args.task, bin_id)), allow_pickle=True).item()
 
 # Attempt to repair
 sequences_of_programs = {}
@@ -229,12 +216,11 @@ for problem_id, test_programs in test_dataset.iteritems():
     for program, name_dict, name_sequence, user_id, program_id in test_programs:
         sequences_of_programs[problem_id][program_id] = [program]
         fixes_suggested_by_network[problem_id][program_id] = []
-        entries.append(
-            (program, name_dict, name_sequence, user_id, program_id,))
+        entries.append((program, name_dict, name_sequence, user_id, program_id))
 
         if not args.is_timing_experiment:
-            c.execute("INSERT OR IGNORE INTO programs VALUES (?,?,?,?,?,?)", (program_id,
-                                                                              user_id, problem_id, program, json.dumps(name_dict), json.dumps(name_sequence)))
+            c.execute("INSERT OR IGNORE INTO programs VALUES (?,?,?,?,?,?)",
+                      (program_id, user_id, problem_id, program, json.dumps(name_dict), json.dumps(name_sequence)))
 
     for round_ in range(args.max_attempts):
         to_delete = []
@@ -308,7 +294,7 @@ for problem_id, test_programs in test_dataset.iteritems():
             except Exception as e:
                 raise e
             else:
-                if (not args.is_timing_experiment):
+                if not args.is_timing_experiment:
                     c.execute("INSERT OR IGNORE INTO iterations VALUES (?,?,?,?)",
                               (program_id, round_ + 1, args.task, fix))
 

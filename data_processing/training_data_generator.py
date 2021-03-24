@@ -15,10 +15,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from util.tokenizer import EmptyProgramException
 from util.helpers import get_rev_dict, make_dir_if_not_exists
 import os
-import time
 import argparse
 import sqlite3
 import numpy as np
@@ -77,8 +75,7 @@ def generate_training_data(db_path, bins, validation_users, min_program_length, 
         from data_processing.typo_mutator import LoopCountThresholdExceededException, FailedToMutateException, Typo_Mutate, typo_mutate
         mutator_obj = Typo_Mutate(rng)
         mutate = partial(typo_mutate, mutator_obj)
-
-        def rename_ids(x, y): return (x, y)
+        def rename_ids(x, y): return x, y
     else:
         from data_processing.undeclared_mutator import LoopCountThresholdExceededException, FailedToMutateException, id_mutate
         mutate = partial(id_mutate, rng)
@@ -97,73 +94,43 @@ def generate_training_data(db_path, bins, validation_users, min_program_length, 
 
     with sqlite3.connect(db_path) as conn:
         cursor = conn.cursor()
-        query = "SELECT user_id, tokenized_code FROM Code " +\
-            "WHERE problem_id=? and codelength>? and codelength<? and errorcount=0;"
+        # Should be ">=?" and "<=?"???
+        query = 'SELECT user_id, tokenized_code, codelength FROM Code ' \
+                'WHERE problem_id=? and codelength>? and codelength<? and errorcount=0;'
         for problem_id in problem_list:
             for row in cursor.execute(query, (problem_id, min_program_length, max_program_length)):
-                user_id, tokenized_code = map(str, row)
+                user_id, tokenized_code, program_length = map(str, row)
                 key = 'validation' if user_id in validation_users[problem_id] else 'train'
 
-                program_length = len(tokenized_code.split())
                 program_lengths.append(program_length)
 
-                if program_length >= min_program_length and program_length <= max_program_length:
-                    id_renamed_correct_program, _ = rename_ids(
-                        tokenized_code, '')
+                id_renamed_correct_program, _ = rename_ids(tokenized_code, '')
 
-                    # Correct pairs
-                    dummy_fix_for_correct_program = '-1'
-                    try:
-                        token_strings[key][problem_id] += [
-                            (id_renamed_correct_program, dummy_fix_for_correct_program)]
-                    except:
-                        token_strings[key][problem_id] = [
-                            (id_renamed_correct_program, dummy_fix_for_correct_program)]
+                # Correct pairs
+                token_strings[key].setdefault(problem_id, []).append((id_renamed_correct_program, '-1'))
 
-                    # Mutate
-                    total_mutate_calls += 1
-                    try:
-                        iterator = mutate(
-                            tokenized_code, max_mutations, max_variants)
-
-                    except FailedToMutateException:
-                        exceptions_in_mutate_call += 1
-                    except LoopCountThresholdExceededException:
-                        exceptions_in_mutate_call += 1
-                    except ValueError:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
-                    except AssertionError:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
-                    except Exception:
-                        exceptions_in_mutate_call += 1
-                        if kind_mutations == 'typo':
-                            raise
-                    else:
-                        for corrupt_program, fix in iterator:
-                            corrupt_program_length = len(
-                                corrupt_program.split())
-                            fix_length = len(fix.split())
-                            fix_lengths.append(fix_length)
-
-                            if corrupt_program_length >= min_program_length and \
-                               corrupt_program_length <= max_program_length and fix_length <= max_fix_length:
-
-                                try:
-                                    corrupt_program, fix = rename_ids(
-                                        corrupt_program, fix)
-                                except FixIDNotFoundInSource:
-                                    exceptions_in_mutate_call += 1
-
-                                try:
-                                    token_strings[key][problem_id] += [
-                                        (corrupt_program, fix)]
-                                except:
-                                    token_strings[key][problem_id] = [
-                                        (corrupt_program, fix)]
+                # Mutate
+                total_mutate_calls += 1
+                try:
+                    iterator = mutate(tokenized_code, max_mutations, max_variants)
+                except (FailedToMutateException, LoopCountThresholdExceededException):
+                    exceptions_in_mutate_call += 1
+                except Exception:
+                    exceptions_in_mutate_call += 1
+                    if kind_mutations == 'typo':
+                        raise
+                else:
+                    for corrupt_program, fix in iterator:
+                        corrupt_program_length = len(corrupt_program.split())
+                        fix_length = len(fix.split())
+                        fix_lengths.append(fix_length)
+                        if (min_program_length <= corrupt_program_length <= max_program_length
+                                and fix_length <= max_fix_length):
+                            try:
+                                corrupt_program, fix = rename_ids(corrupt_program, fix)
+                            except FixIDNotFoundInSource:
+                                exceptions_in_mutate_call += 1
+                            token_strings[key].setdefault(problem_id, []).append((corrupt_program, fix))
 
     program_lengths = np.sort(program_lengths)
     fix_lengths = np.sort(fix_lengths)
@@ -201,19 +168,9 @@ def build_dictionary(token_strings, drop_ids, tl_dict={}):
     if drop_ids:
         tl_dict['_<id>_@'] = 3
 
-    if type(token_strings) == list:
-        token_strings_list = token_strings
-
-        for token_strings in token_strings_list:
-            for key in token_strings:
-                for problem_id in token_strings[key]:
-                    build_dict((prog + ' ' + fix for prog,
-                                fix in token_strings[key][problem_id]), tl_dict)
-    else:
-        for key in token_strings:
-            for problem_id in token_strings[key]:
-                build_dict((prog + ' ' + fix for prog,
-                            fix in token_strings[key][problem_id]), tl_dict)
+    for key in token_strings:
+        for pfs in token_strings[key].values():
+            build_dict((prog + ' ' + fix for prog, fix in pfs), tl_dict)
 
     print 'dictionary size:', len(tl_dict)
     assert len(tl_dict) > 4
@@ -260,8 +217,7 @@ def vectorize_data(token_strings, tl_dict, max_program_length, max_fix_length, d
                     fix_tokens, tl_dict,  max_fix_length, drop_ids, reverse=False, vecFor='decoder')
 
                 if (prog_vector is not None) and (fix_vector is not None):
-                    token_vectors[key][problem_id].append(
-                        (prog_vector, fix_vector))
+                    token_vectors[key][problem_id].append((prog_vector, fix_vector))
                 else:
                     skipped += 1
 
@@ -313,8 +269,7 @@ def save_bins(destination, tl_dict, token_vectors, bins):
         print "Fold %d: Train:%d Validation:%d Test:%d" % (i, len(token_vectors_this_fold['train']),
                                                            len(token_vectors_this_fold['validation']), len(token_vectors_this_fold['test']))
 
-        save_pairs(os.path.join(destination, 'bin_%d' %
-                                i), token_vectors_this_fold, tl_dict)
+        save_pairs(os.path.join(destination, 'bin_%d' % i), token_vectors_this_fold, tl_dict)
 
 ######## data generation #########
 

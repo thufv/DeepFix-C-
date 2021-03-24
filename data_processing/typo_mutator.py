@@ -27,26 +27,6 @@ class LoopCountThresholdExceededException(Exception):
     pass
 
 
-class TypeInferenceFailedException(Exception):
-    pass
-
-
-def get_last_id(prog):
-    prog = prog.split()
-    last_id = None
-
-    for word in prog:
-        if '_<id>_' in word:
-            the_id = int(word.lstrip('_<id>_').rstrip('@'))
-
-            if last_id is None or the_id > last_id:
-                last_id = the_id
-
-    if last_id is not None:
-        return last_id
-    return 1
-
-
 def do_fix_at_line(corrupted_prog, line, fix):
     try:
         lines = get_lines(corrupted_prog)
@@ -68,17 +48,6 @@ def do_fix_at_line(corrupted_prog, line, fix):
         raise
 
     return recompose_program(lines)
-
-
-def get_min(alist):
-    if len(alist) == 0:
-        return None, None
-    m, mi = alist[0], 0
-    for idx in range(len(alist)):
-        if alist[idx] < m:
-            m = alist[idx]
-            mi = idx
-    return m, mi
 
 
 class Typo_Mutate:
@@ -197,11 +166,14 @@ class Typo_Mutate:
 def typo_mutate(mutator_obj, prog, max_num_mutations, num_mutated_progs, just_one=False):
 
     assert len(prog) > 10 and max_num_mutations > 0 and num_mutated_progs > 0, "Invalid argument(s) supplied to the function token_mutate_series_network2"
+    # Why did you assert the number of program characters (instead of the
+    # number of tokens) is more than 10?
     corrupt_fix_pair = set()
 
     for _ in range(num_mutated_progs):
         num_mutations = mutator_obj.rng.choice(
             range(max_num_mutations)) + 1 if max_num_mutations > 1 else 1
+        # Identical to num_mutations = mutator_obj.rng.choice(range(max_num_mutations)) + 1
         this_corrupted = prog
         lines = set()
         mutation_count = 0
@@ -214,7 +186,6 @@ def typo_mutate(mutator_obj, prog, max_num_mutations, num_mutated_progs, just_on
             if loop_counter == loop_count_threshold:
                 print "mutation_count", mutation_count
                 raise LoopCountThresholdExceededException
-            line = None
 
             this_corrupted, line, mutation_name = mutator_obj.easy_mutate(
                 this_corrupted)     # line is line_number here!

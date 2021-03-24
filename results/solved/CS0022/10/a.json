@@ -1,0 +1,7 @@
+{
+  "raw_code": "using System;\nusing System.Linq;\npublic class Test {\n  static int[] a = new int[10];\n  public static void Main() {\n    for (int i = 0; i != 10; i++) {\n      a[i, 2\n      /* updated */\n      ] = i + 100;\n    }\n  }\n}\n",
+  "raw_error_count": 1,
+  "final_code": "\nusing System ; \nusing System . Linq ; \npublic class Test { \nstatic int [,] a = new int [ 0 , 0 ]; \npublic static void Main (){ \nfor ( int i = 0 ; i != 0 ; i ++){ \na [ i , 0 \n]= i + 0 ;}}} ",
+  "final_error_count": 0,
+  "iteration_count": 5
+}

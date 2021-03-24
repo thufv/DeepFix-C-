@@ -29,8 +29,6 @@ class C_Tokenizer(Tokenizer):
                  'register', 'return', 'signed', 'sizeof', 'static', 'switch',
                  'typedef', 'void', 'volatile', 'while', 'EOF', 'NULL',
                  'null', 'struct', 'union']
-    _includes = ['stdio.h', 'stdlib.h', 'string.h', 'math.h', 'malloc.h',
-                 'stdbool.h', 'cstdio', 'cstdio.h', 'iostream', 'conio.h']
     _calls = ['printf', 'scanf', 'cin', 'cout', 'clrscr', 'getch', 'strlen',
               'gets', 'fgets', 'getchar', 'main', 'malloc', 'calloc', 'free']
     _types = ['char', 'double', 'float', 'int', 'long', 'short', 'unsigned']
@@ -39,7 +37,6 @@ class C_Tokenizer(Tokenizer):
         return repr(string)[1:-1]
 
     def _tokenize_code(self, code):
-        keywords = {'IF', 'THEN', 'ENDIF', 'FOR', 'NEXT', 'GOSUB', 'RETURN'}
         token_specification = [
             ('comment',
              r'\/\*(?:[^*]|\*(?!\/))*\*\/|\/\*([^*]|\*(?!\/))*\*?|\/\/[^\n]*'),
@@ -58,28 +55,19 @@ class C_Tokenizer(Tokenizer):
         ]
         tok_regex = '|'.join('(?P<%s>%s)' %
                              pair for pair in token_specification)
-        line_num = 1
-        line_start = 0
         for mo in re.finditer(tok_regex, code):
             kind = mo.lastgroup
             value = mo.group(kind)
-            if kind == 'NEWLINE':
-                line_start = mo.end()
-                line_num += 1
-            elif kind == 'SKIP':
-                pass
-            elif kind == 'MISMATCH':
-                yield UnexpectedTokenException('%r unexpected on line %d' % (value, line_num))
+            if kind == 'MISMATCH':
+                yield UnexpectedTokenException('%r unexpected on line %d' % (value, 1))
             else:
-                if kind == 'ID' and value in keywords:
-                    kind = value
-                column = mo.start() - line_start
-                yield Token(kind, value, line_num, column)
+                yield Token(kind, value, 1, mo.start())
 
     def _sanitize_brackets(self, tokens_string):
         lines = get_lines(tokens_string)
 
         if len(lines) == 1:
+            # Should be lines == ['']???
             raise EmptyProgramException(tokens_string)
 
         for i in range(len(lines) - 1, -1, -1):
@@ -104,6 +92,7 @@ class C_Tokenizer(Tokenizer):
 
         for line in lines:
             assert(lines[i].strip() != '')
+            # Should be line instead of lines[i]???
 
         return recompose_program(lines)
 
@@ -111,12 +100,10 @@ class C_Tokenizer(Tokenizer):
                  keep_literals=False):
         result = '0 ~ '
 
-        names = ''
         line_count = 1
         name_dict = {}
         name_sequence = []
 
-        regex = '%(d|i|f|c|s|u|g|G|e|p|llu|ll|ld|l|o|x|X)'
         isNewLine = True
 
         # Get the iterable
@@ -131,8 +118,8 @@ class C_Tokenizer(Tokenizer):
             if isinstance(token, Exception):
                 return '', '', ''
 
-            type_ = str(token[0])
-            value = str(token[1])
+            type_ = token[0]
+            value = token[1]
 
             if value in self._keywords:
                 result += '_<keyword>_' + self._escape(value) + ' '
@@ -162,8 +149,8 @@ class C_Tokenizer(Tokenizer):
                 pass
 
             elif 'string' in type_:
-                matchObj = [m.group().strip()
-                            for m in re.finditer(regex, value)]
+                matchObj = [m.group().strip() for m in re.finditer(
+                            '%(d|i|f|c|s|u|g|G|e|p|llu|ll|ld|l|o|x|X)', value)]
                 if matchObj and keep_format_specifiers:
                     for each in matchObj:
                         result += each + ' '
@@ -179,7 +166,6 @@ class C_Tokenizer(Tokenizer):
 
                     name_sequence.append(self._escape(value))
                     result += '_<id>_' + name_dict[self._escape(value)] + '@ '
-                    names += '_<id>_' + name_dict[self._escape(value)] + '@ '
                 else:
                     result += '_<id>_' + '@ '
                 isNewLine = False
@@ -202,7 +188,6 @@ class C_Tokenizer(Tokenizer):
                 isNewLine = False
 
         result = result[:-1]
-        names = names[:-1]
 
         if result.endswith('~'):
             idx = result.rfind('}')

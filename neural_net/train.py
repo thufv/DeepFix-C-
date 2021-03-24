@@ -490,6 +490,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # ???
     dataset_name = '_'.join(args.checkpoints_directory.split(
         '/')[2:]) if 'bin_' in args.checkpoints_directory else '_'.join(args.checkpoints_directory.split('/')[1:])
     dataset_name = dataset_name[:-1]
@@ -584,7 +585,6 @@ if __name__ == '__main__':
         for i in range(num_examples / batch_size):
             start = i * batch_size
             end = (i + 1) * batch_size
-            minibatch = i
 
             X, X_len, Y, Y_len = dataset.get_batch(start, end, which=which)
 
@@ -596,7 +596,7 @@ if __name__ == '__main__':
             repair_accuracy = 0
             localization_accuracy = 0
 
-            for y_idx, (y, y_hat) in enumerate(zip(Y_targets, Y_hat)):
+            for _, (y, y_hat) in enumerate(zip(Y_targets, Y_hat)):
                 localization_equality, fix_equality = get_all_accuracies(
                     y, y_hat)
 
